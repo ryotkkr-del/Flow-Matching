@@ -1,5 +1,6 @@
 """python -m ai.train --epochs 20 (初回のみMNISTをダウンロード)"""
 import argparse
+import copy
 import json
 import os
 import random
@@ -23,6 +24,7 @@ def main():
     p.add_argument('--threads', type=int, default=4)
     p.add_argument('--bf16', action='store_true', help='任意の混合精度高速化。重み・損失はfloat32のまま')
     p.add_argument('--stop-file', help='このファイルが存在したら次のepoch保存後に停止')
+    p.add_argument('--ema-decay', type=float, help='任意の重み移動平均。例:0.995。再開時は保存値を継承')
     p.add_argument('--data', default='data')
     p.add_argument('--out', default='checkpoints/mnist.pt')
     p.add_argument('--resume')
@@ -30,6 +32,7 @@ def main():
     p.add_argument('--max-batches', type=int, default=0, help='動作確認専用。品質確認用学習には使わない')
     a = p.parse_args()
     if a.epochs < 1 or a.batch_size < 1 or (a.lr is not None and a.lr <= 0) or a.threads < 1 or a.max_batches < 0: p.error('正の値を指定してください')
+    if a.ema_decay is not None and not 0<a.ema_decay<1:p.error('EMA係数は0より大きく1より小さい値を指定')
     torch.set_num_threads(a.threads)
     random.seed(a.seed); np.random.seed(a.seed); torch.manual_seed(a.seed)
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -52,6 +55,11 @@ def main():
             for group in optimizer.param_groups:group['lr']=a.lr
         if 'rng' in saved: torch.set_rng_state(saved['rng'])
         if device=='cuda' and saved.get('cuda_rng') is not None: torch.cuda.set_rng_state_all(saved['cuda_rng'])
+    ema_decay=a.ema_decay if a.ema_decay is not None else (saved or {}).get('ema_decay')
+    ema=copy.deepcopy(model).eval().requires_grad_(False) if ema_decay is not None else None
+    ema_updates=(saved or {}).get('ema_updates',0)
+    ema_start_epoch=(saved or {}).get('ema_start_epoch',start+1)
+    if ema is not None and saved and 'ema' in saved:ema.load_state_dict(saved['ema'])
     Path(a.out).parent.mkdir(parents=True, exist_ok=True)
     print(f'train: {start} -> {a.epochs} epochs / {device} / bf16={a.bf16}', flush=True)
     for epoch in range(start, a.epochs):
@@ -69,6 +77,12 @@ def main():
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1., error_if_nonfinite=True)
             optimizer.step()
+            if ema is not None:
+                # θ平均 ← βθ平均 + (1−β)θ。推論用の重みだけを平滑化する。
+                with torch.no_grad():
+                    for averaged,current in zip(ema.parameters(),model.parameters()):
+                        averaged.mul_(ema_decay).add_(current,alpha=1-ema_decay)
+                ema_updates+=1
             total += loss.item() * len(x1); seen += len(x1)
             if (index + 1) % 100 == 0:
                 print(f'epoch {epoch+1} batch {index+1}/{len(loader)} loss={total/seen:.6f}', flush=True)
@@ -82,6 +96,8 @@ def main():
                 'precision': 'bf16-autocast' if a.bf16 else 'float32',
                 'epoch_seconds': time.perf_counter()-epoch_started,
                 'learning_rates': [group['lr'] for group in optimizer.param_groups]}
+        if ema is not None:
+            data.update(ema=ema.state_dict(),ema_decay=ema_decay,ema_updates=ema_updates,ema_start_epoch=ema_start_epoch)
         torch.save(data, a.out+'.tmp'); os.replace(a.out+'.tmp', a.out)
         Path(a.out+'.history.json').write_text(json.dumps(history),encoding='utf-8')
         print(f'epoch {epoch+1}/{a.epochs} loss={history[-1]:.6f} samples={seen} device={device} seconds={data["epoch_seconds"]:.1f}', flush=True)

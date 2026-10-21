@@ -35,6 +35,7 @@ def initialize():
         torch.set_num_threads(int(os.getenv('FLOW_THREADS','4')))
         model, info = load_model(checkpoint)
         if info.get('smoke_only'): raise ValueError('動作確認用モデルです。本学習を実行してください。')
+        if type(info.get('epoch')) is not int or info['epoch']<1:raise ValueError('学習回数の記録がないモデルです。学習済みcheckpointを指定してください。')
         model_sha = info['_source_sha256']
     except Exception as e:
         model=None; load_error=f'{type(e).__name__}: {e}'
@@ -49,7 +50,7 @@ class Request(BaseModel):
 @app.get('/api/status')
 def status():
     return {'ready':model is not None, 'checkpoint':checkpoint.name, 'checkpoint_sha256':model_sha,
-            'epoch':info.get('epoch'), 'device':'cpu', 'error':load_error,
+            'epoch':info.get('epoch'), 'weights':info.get('_weights_source','raw'), 'device':'cpu', 'error':load_error,
             'demos':[p.name for p in sorted((ROOT/'demos').glob('*.json.gz'))]}
 
 def pack(data):
@@ -61,7 +62,7 @@ def work(key, request):
         from ai.trajectory import generate_path,payload
         x,v=generate_path(model,request.seed,request.count,request.steps)
         data=pack(payload(x,v,seed=request.seed,steps=request.steps,checkpoint_sha256=model_sha,
-                          epoch=info.get('epoch',0),loss_history=info.get('loss_history')))
+                          epoch=info.get('epoch',0),loss_history=info.get('loss_history'),weights=info.get('_weights_source','raw')))
         if len(data)>MAX_CACHE_BYTES:
             raise ValueError('生成経路がキャッシュ上限を超えました。枚数かステップを減らしてください。')
         with lock:

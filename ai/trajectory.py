@@ -7,13 +7,15 @@ import torch
 from .core import TinyUNet
 
 
-def load_model(path, device='cpu'):
+def load_model(path, device='cpu', *, use_ema=True):
     # 重みと識別hashを同一のbytesから読む。学習側のatomic置換と競合しても一致する。
     raw = Path(path).read_bytes()
     data = torch.load(io.BytesIO(raw), map_location=device, weights_only=True)
     data['_source_sha256'] = hashlib.sha256(raw).hexdigest()
     model = TinyUNet(**data.get('model_config', {})).to(device)
-    model.load_state_dict(data['model'])
+    # EMAが保存されている場合はその重みを推論に使う。学習再開はtrain.pyでrawのmodelを読む。
+    data['_weights_source']='ema' if use_ema and 'ema' in data else 'raw'
+    model.load_state_dict(data['ema'] if data['_weights_source']=='ema' else data['model'])
     model.eval()
     return model, data
 
@@ -42,12 +44,12 @@ def generate_path(model, seed=42, count=4, steps=50, device='cpu'):
     return torch.stack(states), torch.stack(velocities)
 
 
-def payload(states, velocities, *, seed, steps, checkpoint_sha256, epoch, loss_history=None):
+def payload(states, velocities, *, seed, steps, checkpoint_sha256, epoch, loss_history=None, weights="raw"):
     # [time, image, 784]。float32の実計算値を保持（非量子化）。
     return {'format': 1, 'method': 'euler', 'seed': seed, 'steps': steps,
             'count': states.shape[1], 'times': [k / steps for k in range(steps + 1)],
             'checkpoint_sha256': checkpoint_sha256, 'epoch': epoch,
-            'loss_history': loss_history or [],
+            'loss_history': loss_history or [], 'weights':weights,
             'states': states.flatten(2).tolist(),
             'velocities': velocities.flatten(2).tolist()}
 
@@ -57,6 +59,8 @@ def validate_payload(data):
     steps, count = data['steps'], data['count']
     if type(steps) is not int or type(count) is not int or not (1 <= steps <= 200 and 1 <= count <= 8):
         raise ValueError('軌道のサイズが範囲外です')
+    if type(data.get('epoch')) is not int or data['epoch']<1 or type(data.get('seed')) is not int or not 0<=data['seed']<=2147483647:
+        raise ValueError('学習回数またはノイズ番号が不正です')
     x = np.asarray(data['states'], dtype=np.float32)
     v = np.asarray(data['velocities'], dtype=np.float32)
     if x.shape != (steps + 1, count, 784) or v.shape != (steps, count, 784):
@@ -66,6 +70,7 @@ def validate_payload(data):
     sha=data.get('checkpoint_sha256','')
     if data.get('format') != 1 or data.get('method') != 'euler' or not isinstance(sha,str) or len(sha)!=64 or any(c not in '0123456789abcdef' for c in sha):
         raise ValueError('軌道の形式またはcheckpoint識別子が不正です')
+    if data.get('weights','raw') not in ('raw','ema'):raise ValueError('重みの種類が不正です')
     times=np.asarray(data['times'],dtype=np.float64)
     if times.shape != (steps+1,) or not np.allclose(times,np.linspace(0,1,steps+1),atol=1e-7,rtol=0):
         raise ValueError('時刻が不正です')

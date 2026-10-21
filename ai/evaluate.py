@@ -26,8 +26,8 @@ def save_grid(images, path, columns=8, label=''):
 
 
 @torch.inference_mode()
-def measure(path, test_images, *, seed, steps, out, name):
-    m,info=load_model(path)
+def measure(path, test_images, *, seed, steps, out, name, use_ema=True):
+    m,info=load_model(path,use_ema=use_ema)
     # モデル間で、同じテスト画像・時刻・ノイズを使う。
     torch.manual_seed(seed)
     total,count=0.,0
@@ -39,7 +39,7 @@ def measure(path, test_images, *, seed, steps, out, name):
     x,_=generate_path(m,seed=seed,count=64,steps=steps)
     seconds=time.perf_counter()-start
     save_grid(x[-1],out/f'{name}-64.png',label=f'{name} / epoch {info["epoch"]} / seed {seed} / Euler {steps}')
-    return {'checkpoint_sha256':info['_source_sha256'],'epoch':info['epoch'],
+    return {'checkpoint_sha256':info['_source_sha256'],'epoch':info['epoch'],'weights':info.get('_weights_source','raw'),
             'heldout_fm_mse':total/count,'test_count':count,
             'sampling_seed':seed,'steps':steps,'generated_count':64,
             'sampling_seconds':round(seconds,3)},x[-1]
@@ -48,7 +48,8 @@ def measure(path, test_images, *, seed, steps, out, name):
 def main():
     p=argparse.ArgumentParser()
     p.add_argument('--before',default='checkpoints/exhibit.pt')
-    p.add_argument('--after',default='checkpoints/mnist20.pt')
+    p.add_argument('--after',default='checkpoints/mnist.pt')
+    p.add_argument('--raw-after',action='store_true',help='EMAを使わず、保存された通常の学習重みを評価')
     p.add_argument('--out',default='quality')
     p.add_argument('--data',default='data')
     p.add_argument('--test-count',type=int,default=1024)
@@ -62,7 +63,7 @@ def main():
     images=torch.stack([d[i][0] for i in range(a.test_count)])
     folder=Path(a.out);folder.mkdir(parents=True,exist_ok=True)
     before,x_before=measure(a.before,images,seed=a.seed,steps=a.steps,out=folder,name='before')
-    after,x_after=measure(a.after,images,seed=a.seed,steps=a.steps,out=folder,name='after')
+    after,x_after=measure(a.after,images,seed=a.seed,steps=a.steps,out=folder,name='after',use_ema=not a.raw_after)
     # 左4epoch・右追加学習後。同じ初期ノイズの対応を各行で比較。
     pairs=torch.stack([x_before,x_after],dim=1).reshape(-1,1,28,28)
     save_grid(pairs[:32],folder/'comparison.png',columns=8,label=f'Pairs: epoch {before["epoch"]} | epoch {after["epoch"]} / same noise / seed {a.seed}')

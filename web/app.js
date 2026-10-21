@@ -17,6 +17,7 @@ function draw(id,values,mode='image',scale=1){
  sx.putImageData(pixels,0,0);ctx.imageSmoothingEnabled=false;ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(scratch,0,0,canvas.width,canvas.height);
 }
 function validate(d){
+ if(d.weights!==undefined&&!['raw','ema'].includes(d.weights))throw Error('重みの種類が不正です');
  if(d?.format!==1||d.method!=='euler'||!Number.isInteger(d.steps)||d.steps<1||d.steps>200||!Number.isInteger(d.count)||d.count<1||d.count>8)throw Error('対応していない生成経路です');
  if(!/^[a-f0-9]{64}$/.test(d.checkpoint_sha256)||!Number.isInteger(d.seed)||d.seed<0||d.seed>2147483647||!Number.isInteger(d.epoch)||d.epoch<1)throw Error('モデルの出所・学習情報がありません');
  if(!Array.isArray(d.times)||d.times.length!==d.steps+1||d.times.some((v,k)=>!Number.isFinite(v)||Math.abs(v-k/d.steps)>1e-7))throw Error('時刻情報が不正です');
@@ -42,7 +43,7 @@ function setRoute(d){
   const button=document.createElement('button'),c=document.createElement('canvas'),label=document.createElement('span');c.width=c.height=112;label.textContent=`NO. ${String(j+1).padStart(2,'0')}`;
   button.append(c,label);button.onclick=()=>{selected=j;render()};$('gallery').append(button);
  }
- $('provenance').textContent=`Euler · epoch ${d.epoch} · seed ${d.seed} · checkpoint SHA256 ${d.checkpoint_sha256}`;
+ $('provenance').textContent=`Euler · epoch ${d.epoch} · ${d.weights==='ema'?'EMA weights':'raw weights'} · seed ${d.seed} · checkpoint SHA256 ${d.checkpoint_sha256}`;
  $('scale-note').textContent=`色の尺度（軌道全体で固定）：速度 ±${velocityScale.toFixed(3)} ／ 変化量 0〜${heatScale.toFixed(3)}。画像の明暗だけ表示時に[-1,1]へ制限。`;
  render();
 }
@@ -126,7 +127,7 @@ async function generate(compare=false){
    d=validate(await fetchJson(`/api/paths/${j.id}`));
   }
   if(version!==loadVersion)return;
-  if(compare){if(d.checkpoint_sha256!==old.checkpoint_sha256)throw Error('モデルが異なるためステップ数だけの比較はできません');for(let j=0;j<count;j++)if(d.states[0][j].some((v,i)=>v!==old.states[0][j][i]))throw Error('初期ノイズが一致しません')}
+  if(compare){if(d.checkpoint_sha256!==old.checkpoint_sha256||(d.weights||'raw')!==(old.weights||'raw'))throw Error('モデルが異なるためステップ数だけの比較はできません');for(let j=0;j<count;j++)if(d.states[0][j].some((v,i)=>v!==old.states[0][j][i]))throw Error('初期ノイズが一致しません')}
   previous=null;$('comparison-section').hidden=true;setRoute(d);if(compare)comparison(old);
   message(modelReady?'生成完了。実際のODE計算の途中を自由にたどれます。':'保存デモを再生中。実モデルが計算した経路を自由にたどれます。');setPlaying(true);
  }catch(e){if(version===loadVersion)message(e.message,true)}finally{setBusy(false)}

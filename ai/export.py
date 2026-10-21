@@ -28,7 +28,7 @@ def main():
         for steps in a.steps:
             x,v=generate_path(model, seed, a.count, steps, device)
             d=payload(x,v,seed=seed,steps=steps,checkpoint_sha256=sha,
-                      epoch=info.get('epoch',0),loss_history=info.get('loss_history'))
+                      epoch=info.get('epoch',0),loss_history=info.get('loss_history'),weights=info.get('_weights_source','raw'))
             validate_payload(d)
             path=folder/f'seed{seed}-steps{steps}.json.gz'
             temporary=path.with_suffix(path.suffix+'.tmp')

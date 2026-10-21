@@ -75,3 +75,12 @@ def test_bf16_loss_and_gradients_remain_finite():
     assert abs(loss.item()-fp32.item())/fp32.item()<.005
     loss.backward()
     assert all(p.dtype==torch.float32 and p.grad is not None and torch.isfinite(p.grad).all() for p in m.parameters())
+
+def test_checkpoint_can_select_ema_or_raw_weights(tmp_path):
+    p=tmp_path/'both.pt';raw=TinyUNet(base=16);ema=TinyUNet(base=16)
+    torch.save({'model':raw.state_dict(),'ema':ema.state_dict(),'model_config':{'base':16}},p)
+    a,info=load_model(p);assert info['_weights_source']=='ema'
+    b,info_raw=load_model(p,use_ema=False);assert info_raw['_weights_source']=='raw'
+    assert info['_source_sha256']==info_raw['_source_sha256']
+    for x,y in zip(a.parameters(),ema.parameters()):assert torch.equal(x,y)
+    for x,y in zip(b.parameters(),raw.parameters()):assert torch.equal(x,y)

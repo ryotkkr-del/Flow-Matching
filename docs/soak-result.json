@@ -1,0 +1,17 @@
+{
+  "result": "PASS",
+  "error": null,
+  "elapsed_seconds": 905.821,
+  "generated_requests": 90,
+  "cache_hit_checks": 90,
+  "checkpoint_sha256": "b34b003f767cfcfe453c9a5e38b0b81e5907041123a192e0cff7aea34596d0d5",
+  "epoch": 4,
+  "steps": 50,
+  "count": 4,
+  "peak_cache_bytes": 100513559,
+  "cache_limit_bytes": 100663296,
+  "peak_jobs": 64,
+  "peak_process_rss_kib": 433372,
+  "request_seconds_median": 5.18982584399987,
+  "note": "ASGI TestClient with the real model. Not a browser or physical offline test."
+}

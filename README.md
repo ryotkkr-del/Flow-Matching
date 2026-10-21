@@ -145,7 +145,7 @@ UIのロジック単体テストはブラウザの見た目・操作確認とは
 ## 学習前後の比較を再現する
 
 ```powershell
-.venv\Scripts\python -m ai.evaluate --before checkpoints/exhibit.pt --after checkpoints/mnist20.pt
+.venv\Scripts\python -m ai.evaluate --before checkpoints/exhibit.pt --after checkpoints/mnist.pt
 ```
 
 MNISTのtest先頭1024枚を使ってFlow Matchingの損失を同じノイズ・時刻で比較し、同じ初期ノイズから64枚ずつ生成します。
@@ -154,3 +154,15 @@ MNISTのtest先頭1024枚を使ってFlow Matchingの損失を同じノイズ・
 
 実モデルのAPIを繰り返し確認する場合は、`python tools/soak.py --seconds 900 --interval 10`。
 これはASGIサーバーの検査です。ブラウザの描画、物理的な回線切断、Windows実機での確認を代替しません。
+
+## 任意の重み移動平均（EMA）
+
+`--ema-decay 0.995` を付けると、通常の学習重みとは別に、重みの移動平均を保存します。
+確率経路、TinyUNet、MSE、オイラー法は同じ。詳しい数式は `docs/MATH.md`。
+`model` は通常の重み、`ema` は平均した重みとして両方を保持し、学習再開は通常の重みとoptimizerから行います。
+再開時に係数を省略すると保存済みのEMA係数を継承します。
+展示・書き出しでは、EMAが保存されていればEMAを使用。モデルのhashに加えてraw/EMAの種類も生成経路に記録します。
+同じノイズでステップ数だけを比較する場合は、raw/EMAの種類も一致する必要があります。
+
+平均しない重みの評価も、同じcheckpointから `ai.evaluate --raw-after` で再現できます。
+EMAを使っても品質向上が保証されるわけではないため、実際のPNGと評価結果で確認してください。

@@ -38,3 +38,9 @@ test('manual selection wins over a pending automatic demo load',async()=>{
  context.fetch=()=>new Promise(r=>{resolve=r});const pending=run('advanceAuto()');run('stopAuto();frame=cursor=3;render()');resolve({ok:true,json:async()=>fixture(50)});await pending;
  assert.equal(run('route.steps'),5);assert.equal(run('frame'),3);assert.equal(run('autoMode'),false);
 });
+
+test('step-only comparison rejects raw versus EMA even for the same checkpoint',async()=>{
+ const {context,get,run}=setup();context.d=fixture(5);context.d.weights='raw';run("setRoute(d);demoNames=['seed42-steps20.json.gz'];modelReady=false");get('steps').value='20';
+ const d=fixture(20);d.weights='ema';context.fetch=async()=>({ok:true,json:async()=>d});
+ await run('generate(true)');assert.equal(run('route.steps'),5);assert.match(get('notice').textContent,/モデルが異なる/);
+});

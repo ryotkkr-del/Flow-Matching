@@ -4,7 +4,7 @@
 
 元の `sample_path()`・`ResBlock`・`TinyUNet` はそのまま `ai/core.py` に分離。
 元ノートは削除せず `notebooks/original.ipynb` に無変更で保存。
-数学のアルゴリズムは変更していません。注意機構、最適輸送coupling、拡散のscore学習などは追加していません。
+Flow Matchingの確率経路・速度予測・MSE・Euler更新は変更していません。任意の重み平均（EMA）の追加は第9節で説明します。注意機構、最適輸送coupling、拡散のscore学習などは追加していません。
 変更は中間状態の記録、再現用seed、学習再開、展示サーバー、可視化が中心です。
 学習の標準設定は8→20epochに増やしましたが、品質向上が保証されたという意味ではありません。
 
@@ -16,12 +16,12 @@ MNISTの各画素pはToTensorで0〜1、Normalizeで x₁ = (p−0.5)/0.5 = 2p�
 
 ## 2. 学習時の直線経路
 
-\[
+$$
 t\sim U[0,1],\quad x_0\sim\mathcal N(0,I),\quad x_1\sim p_{data},\quad x_0\perp x_1
-\]
-\[
+$$
+$$
 x_t=(1-t)x_0+tx_1,\qquad \frac{dx_t}{dt}=x_1-x_0.
-\]
+$$
 
 `sample_path()`:
 
@@ -38,9 +38,9 @@ target_velocity = x1 - x0
 
 ## 3. 速度を予測する
 
-\[
+$$
 v_\theta:\mathbb R^{784}\times[0,1]\to\mathbb R^{784}
-\]
+$$
 
 ```python
 predicted = model(xt, t)
@@ -54,9 +54,9 @@ TinyUNetは28→14→7→14→28の解像度で特徴を処理するCNN。
 
 ## 4. MSE学習
 
-\[
+$$
 \mathcal L(\theta)=\mathbb E\left[\frac1{784}\|v_\theta(x_t,t)-(x_1-x_0)\|^2\right].
-\]
+$$
 
 ```python
 loss = F.mse_loss(predicted, target)
@@ -72,13 +72,13 @@ PyTorchのmeanはbatch・channel・画素で平均するので、期待値のミ
 
 ## 5. 生成時のODEとEuler法
 
-\[
+$$
 \frac{dx}{dt}=v_\theta(x,t),\quad x(0)\sim\mathcal N(0,I),
 \quad \Delta t=1/N,\quad t_k=k/N.
-\]
-\[
+$$
+$$
 x_{k+1}=x_k+\Delta t\,v_\theta(x_k,t_k).
-\]
+$$
 
 `ai/trajectory.py`:
 
@@ -116,7 +116,7 @@ xの変化を、区間中は現在予測された速度で近似する1次Euler�
 元実装に、時刻の向き・目標速度の符号・入力の正規化・生成時の復元の明らかな誤りは見つからなかった。
 標準の学習率2e−4、batch128、base32を維持。学習を20epochまで継続可能にし、固定seedでの画像検証を用意した。
 モデル拡大は `--base 48` / `--base 64` で可能だが、元のbase32をまず検証する。
-既存checkpointへの構造変更はしない。自動学習率変更やEMAなど、理解する対象を増やす変更は加えていない。
+既存checkpointへの構造変更はしない。自動学習率変更は加えていない。EMAは任意の重み平均として第9節に分離し、使用しない基本実装も維持する。
 実際にどの学習量まで試したか、改善を確認できたかはVERIFICATION.mdに記録する。
 
 ## 8. 追加学習時の任意の高速化
@@ -129,3 +129,33 @@ bfloat16の丸め誤差が入るため、float32と完全に同じ結果にな�
 
 checkpointを読み込む際は、読み込んだ同じbytesからSHA256を計算する。
 学習側のファイル置換と起動が重なっても、別の重みの識別子が付かないようにするため。
+
+## 9. 任意の重み移動平均
+
+学習で更新する通常のパラメータを θₖ、平均用に別に保持するパラメータを θ̄ₖ とする。
+AdamWで通常の重みを更新した後、
+
+$$
+\bar\theta_{k+1}=\beta\bar\theta_k+(1-\beta)\theta_{k+1},\qquad \beta=0.995.
+$$
+
+```python
+for averaged, current in zip(ema.parameters(), model.parameters()):
+    averaged.mul_(ema_decay).add_(current, alpha=1-ema_decay)
+```
+
+配列として見れば各成分の加重平均。新しく作るときの θ̄ は、その時点の θ のコピー。
+重みの更新ごとの揺れを減らし、推論用の速度場を安定させることが目的。効果は比較して確認する。
+EMAを使う生成でも、
+
+$$
+\frac{dx}{dt}=v_{\bar\theta}(x,t),\qquad x_{k+1}=x_k+\Delta t\,v_{\bar\theta}(x_k,t_k)
+$$
+
+という同じオイラー法であり、画像そのものを平均・補間しているわけではない。
+学習用のMSEとoptimizerは通常の θ を更新し続ける。EMAの重みには勾配を流さない。
+checkpointは通常のmodel・optimizerとEMAを別々に保存するため、再開時に平均重みと通常のoptimizerが混ざらない。
+
+`load_model` はEMAがあれば標準でそれを選び、`use_ema=False` で通常の重みを選ぶ。
+同じcheckpoint内に2種類の重みがあるため、生成経路にはSHA256とともに `weights: raw/ema` を記録する。
+照合時もその種類を選択し、ステップ数だけの比較では種類が異なる経路を拒否する。
