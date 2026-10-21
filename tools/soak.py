@@ -4,7 +4,10 @@
 import argparse
 import gc
 import json
-import resource
+try:
+    import resource
+except ImportError:  # Windowsではcache上限は検査し、OS側のRSSは未計測にする。
+    resource=None
 import sys
 import time
 from pathlib import Path
@@ -57,7 +60,7 @@ def main():
                 'elapsed_seconds':round(time.perf_counter()-started,3),'generated_requests':count,
                 'cache_hit_checks':count,'checkpoint_sha256':server.model_sha,'epoch':server.info.get('epoch'),
                 'steps':a.steps,'count':4,'peak_cache_bytes':peak_cache,'cache_limit_bytes':server.MAX_CACHE_BYTES,
-                'peak_jobs':peak_jobs,'peak_process_rss_kib':resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
+                'peak_jobs':peak_jobs,'peak_process_rss_kib':(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/(1024 if sys.platform=='darwin' else 1)) if resource else None,
                 'request_seconds_median':sorted(times)[len(times)//2] if times else None,
                 'note':'ASGI TestClient with the real model. Not a browser or physical offline test.'}
         path=Path(a.out);path.parent.mkdir(parents=True,exist_ok=True);path.write_text(json.dumps(result,indent=2))
