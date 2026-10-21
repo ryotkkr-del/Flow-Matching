@@ -1,59 +1,78 @@
 {
-  "checkpoint_sha256": "b34b003f767cfcfe453c9a5e38b0b81e5907041123a192e0cff7aea34596d0d5",
+  "checkpoint_sha256": "3049e1ef5b6646c678700e17d7d839934e45856ee01af4bbe25669c412f90959",
+  "weights": "ema",
   "results": [
     {
       "file": "seed42-steps100.json.gz",
-      "epoch": 4,
+      "epoch": 20,
+      "weights": "ema",
       "result": "PASS",
-      "recomputed": true
+      "recomputed": true,
+      "file_sha256": "06f1afa6c8e2918456a5c246e456ae1bf6fda85e563925bc383f3b1a813110c6"
     },
     {
       "file": "seed42-steps20.json.gz",
-      "epoch": 4,
+      "epoch": 20,
+      "weights": "ema",
       "result": "PASS",
-      "recomputed": true
+      "recomputed": true,
+      "file_sha256": "89c6ac9498bc047514d0a2eb8a328bbb964ec8ee4736a790a7ed8aa259732ccc"
     },
     {
       "file": "seed42-steps50.json.gz",
-      "epoch": 4,
+      "epoch": 20,
+      "weights": "ema",
       "result": "PASS",
-      "recomputed": true
+      "recomputed": true,
+      "file_sha256": "adf38a32de43931ee28afd7ef14ae873f58a48267b7d7e051717368e8f0caac2"
     },
     {
       "file": "seed43-steps100.json.gz",
-      "epoch": 4,
+      "epoch": 20,
+      "weights": "ema",
       "result": "PASS",
-      "recomputed": true
+      "recomputed": true,
+      "file_sha256": "b2f3292134300849087f7d4727e96043a2a57f7b4602d5b3fcbe0517c70d231a"
     },
     {
       "file": "seed43-steps20.json.gz",
-      "epoch": 4,
+      "epoch": 20,
+      "weights": "ema",
       "result": "PASS",
-      "recomputed": true
+      "recomputed": true,
+      "file_sha256": "17df11c865d911f95146523786657c6973c485a505560bb10d377112e951a957"
     },
     {
       "file": "seed43-steps50.json.gz",
-      "epoch": 4,
+      "epoch": 20,
+      "weights": "ema",
       "result": "PASS",
-      "recomputed": true
+      "recomputed": true,
+      "file_sha256": "66db40158db8070590b54c0657e1fa74e7672dbf56b8cd465e79e85d3f7029b2"
     },
     {
       "file": "seed44-steps100.json.gz",
-      "epoch": 4,
+      "epoch": 20,
+      "weights": "ema",
       "result": "PASS",
-      "recomputed": true
+      "recomputed": true,
+      "file_sha256": "088427cfa9fd53bfe78f7dcf13eddb1574d22c55952e8a2934561998ada00675"
     },
     {
       "file": "seed44-steps20.json.gz",
-      "epoch": 4,
+      "epoch": 20,
+      "weights": "ema",
       "result": "PASS",
-      "recomputed": true
+      "recomputed": true,
+      "file_sha256": "feeb14311a1d7210d1327c6fa87bd7ef5496ce5f3550b64a5fd0b1373e469636"
     },
     {
       "file": "seed44-steps50.json.gz",
-      "epoch": 4,
+      "epoch": 20,
+      "weights": "ema",
       "result": "PASS",
-      "recomputed": true
+      "recomputed": true,
+      "file_sha256": "7857269435d9ce9d55f53d965affd6c208ad24d63c696aef7ab85e62204cec51"
     }
   ]
 }

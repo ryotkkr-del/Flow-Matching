@@ -1,0 +1,26 @@
+{
+  "before": {
+    "checkpoint_sha256": "b34b003f767cfcfe453c9a5e38b0b81e5907041123a192e0cff7aea34596d0d5",
+    "epoch": 4,
+    "weights": "raw",
+    "heldout_fm_mse": 0.20032321475446224,
+    "test_count": 1024,
+    "sampling_seed": 2026,
+    "steps": 50,
+    "generated_count": 64,
+    "sampling_seconds": 4.688
+  },
+  "after": {
+    "checkpoint_sha256": "3049e1ef5b6646c678700e17d7d839934e45856ee01af4bbe25669c412f90959",
+    "epoch": 20,
+    "weights": "ema",
+    "heldout_fm_mse": 0.17798129096627235,
+    "test_count": 1024,
+    "sampling_seed": 2026,
+    "steps": 50,
+    "generated_count": 64,
+    "sampling_seconds": 4.844
+  },
+  "relative_heldout_loss_change": -0.11152937923632344,
+  "note": "Held-out FM MSE is not an image-quality metric; inspect the fixed-seed grids."
+}

@@ -38,7 +38,7 @@ def measure(path, test_images, *, seed, steps, out, name, use_ema=True):
     start=time.perf_counter()
     x,_=generate_path(m,seed=seed,count=64,steps=steps)
     seconds=time.perf_counter()-start
-    save_grid(x[-1],out/f'{name}-64.png',label=f'{name} / epoch {info["epoch"]} / seed {seed} / Euler {steps}')
+    save_grid(x[-1],out/f'{name}-64.png',label=f'{name} / epoch {info["epoch"]} / {info["_weights_source"]} / seed {seed} / Euler {steps}')
     return {'checkpoint_sha256':info['_source_sha256'],'epoch':info['epoch'],'weights':info.get('_weights_source','raw'),
             'heldout_fm_mse':total/count,'test_count':count,
             'sampling_seed':seed,'steps':steps,'generated_count':64,
@@ -66,7 +66,7 @@ def main():
     after,x_after=measure(a.after,images,seed=a.seed,steps=a.steps,out=folder,name='after',use_ema=not a.raw_after)
     # 左4epoch・右追加学習後。同じ初期ノイズの対応を各行で比較。
     pairs=torch.stack([x_before,x_after],dim=1).reshape(-1,1,28,28)
-    save_grid(pairs[:32],folder/'comparison.png',columns=8,label=f'Pairs: epoch {before["epoch"]} | epoch {after["epoch"]} / same noise / seed {a.seed}')
+    save_grid(pairs[:32],folder/'comparison.png',columns=8,label=f'Pairs: epoch {before["epoch"]} raw | epoch {after["epoch"]} {after["weights"]} / same noise / seed {a.seed}')
     result={'before':before,'after':after,
             'relative_heldout_loss_change':after['heldout_fm_mse']/before['heldout_fm_mse']-1,
             'note':'Held-out FM MSE is not an image-quality metric; inspect the fixed-seed grids.'}
