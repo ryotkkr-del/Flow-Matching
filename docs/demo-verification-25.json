@@ -1,0 +1,78 @@
+{
+  "checkpoint_sha256": "a2444c5ef8615b2fa1b0429ada397a8db79faa78eac5ccf2781a0e5573b230d5",
+  "weights": "ema",
+  "results": [
+    {
+      "file": "seed42-steps100.json.gz",
+      "epoch": 25,
+      "weights": "ema",
+      "result": "PASS",
+      "recomputed": true,
+      "file_sha256": "ebf4d0b001677870d23f54d9d6a2f6aa9d6ba1444205fc5071c4c62114e3cf34"
+    },
+    {
+      "file": "seed42-steps20.json.gz",
+      "epoch": 25,
+      "weights": "ema",
+      "result": "PASS",
+      "recomputed": true,
+      "file_sha256": "990f78f48f9881de9d7232528105cf59b064e0b6b32038be8d840bf73e202bc2"
+    },
+    {
+      "file": "seed42-steps50.json.gz",
+      "epoch": 25,
+      "weights": "ema",
+      "result": "PASS",
+      "recomputed": true,
+      "file_sha256": "b741190783c934fc31e409474e4d4f665782c0775f0a155c82cbcb4686f2b40d"
+    },
+    {
+      "file": "seed43-steps100.json.gz",
+      "epoch": 25,
+      "weights": "ema",
+      "result": "PASS",
+      "recomputed": true,
+      "file_sha256": "381b933cccd52335cc5f68047d39f579236f00fdb3540f570a530f908db3ceeb"
+    },
+    {
+      "file": "seed43-steps20.json.gz",
+      "epoch": 25,
+      "weights": "ema",
+      "result": "PASS",
+      "recomputed": true,
+      "file_sha256": "a4a07c049848173786bfe3bf97257645ea0d7452eda1c699d5f303ba9eeb8a3f"
+    },
+    {
+      "file": "seed43-steps50.json.gz",
+      "epoch": 25,
+      "weights": "ema",
+      "result": "PASS",
+      "recomputed": true,
+      "file_sha256": "44c581bd3a77d564aedee805322be9bc4c603f22690241a945c52eb0a82c1437"
+    },
+    {
+      "file": "seed44-steps100.json.gz",
+      "epoch": 25,
+      "weights": "ema",
+      "result": "PASS",
+      "recomputed": true,
+      "file_sha256": "515a0dabf902d96342217295247815160739dafa2989be31c0785ddf548f1aa1"
+    },
+    {
+      "file": "seed44-steps20.json.gz",
+      "epoch": 25,
+      "weights": "ema",
+      "result": "PASS",
+      "recomputed": true,
+      "file_sha256": "435739ef279b6102d466f8b1d7afc9544e4d4eb32ee23e5f5b083f4d82fc7af4"
+    },
+    {
+      "file": "seed44-steps50.json.gz",
+      "epoch": 25,
+      "weights": "ema",
+      "result": "PASS",
+      "recomputed": true,
+      "file_sha256": "59345f28f728769b73fbffcc71940b19df14f2ef133323efd4f1c88c8e7a7ca4"
+    }
+  ]
+}

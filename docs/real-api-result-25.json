@@ -1,0 +1,12 @@
+{
+  "epoch": 25,
+  "weights": "ema",
+  "count": 4,
+  "steps": 50,
+  "seconds_including_transfer": 0.786,
+  "checkpoint_sha256": "a2444c5ef8615b2fa1b0429ada397a8db79faa78eac5ccf2781a0e5573b230d5",
+  "states": 51,
+  "velocities": 50,
+  "matches_saved_demo": true,
+  "result": "PASS"
+}
