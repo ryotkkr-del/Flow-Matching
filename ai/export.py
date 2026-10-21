@@ -2,6 +2,7 @@
 import argparse
 import gzip
 import json
+import os
 from pathlib import Path
 import torch
 from .trajectory import load_model, generate_path, payload, fingerprint, validate_payload
@@ -30,7 +31,9 @@ def main():
                       epoch=info.get('epoch',0),loss_history=info.get('loss_history'))
             validate_payload(d)
             path=folder/f'seed{seed}-steps{steps}.json.gz'
-            with gzip.open(path,'wt',encoding='utf-8') as f: json.dump(d,f,separators=(',',':'),allow_nan=False)
+            temporary=path.with_suffix(path.suffix+'.tmp')
+            with gzip.open(temporary,'wt',encoding='utf-8') as f: json.dump(d,f,separators=(',',':'),allow_nan=False)
+            os.replace(temporary,path)
             from PIL import Image
             pixels=((x[-1].clamp(-1,1)+1)*127.5).to(torch.uint8).squeeze(1).numpy()
             import numpy as np

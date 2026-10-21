@@ -1,0 +1,10 @@
+{
+  "epoch": 4,
+  "count": 4,
+  "steps": 50,
+  "seconds_including_transfer": 0.832,
+  "checkpoint_sha256": "b34b003f767cfcfe453c9a5e38b0b81e5907041123a192e0cff7aea34596d0d5",
+  "states": 51,
+  "velocities": 50,
+  "result": "PASS"
+}
