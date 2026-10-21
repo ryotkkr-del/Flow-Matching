@@ -31,7 +31,7 @@ GPU学習はColabの既存PyTorch環境を使うのが簡単です。
 ```
 
 初回はMNISTを `data/` に取得。学習中は各epoch終了時に `checkpoints/mnist.pt` を安全に更新します。
-`--epochs` は追加回数でなく合計の目標epochです。
+`--epochs` は追加回数でなく合計の目標epochです。再開時の学習率は、`--lr` を省略すると保存値を維持し、指定するとその値へ変更します。
 
 ```powershell
 .venv\Scripts\python -m ai.train --resume checkpoints/mnist.pt --epochs 20 --offline

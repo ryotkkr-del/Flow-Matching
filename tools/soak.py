@@ -63,6 +63,6 @@ def main():
                 'peak_jobs':peak_jobs,'peak_process_rss_kib':(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/(1024 if sys.platform=='darwin' else 1)) if resource else None,
                 'request_seconds_median':sorted(times)[len(times)//2] if times else None,
                 'note':'ASGI TestClient with the real model. Not a browser or physical offline test.'}
-        path=Path(a.out);path.parent.mkdir(parents=True,exist_ok=True);path.write_text(json.dumps(result,indent=2))
+        path=Path(a.out);path.parent.mkdir(parents=True,exist_ok=True);path.write_text(json.dumps(result,indent=2),encoding='utf-8')
         print(json.dumps(result,indent=2),flush=True)
 if __name__=='__main__':main()

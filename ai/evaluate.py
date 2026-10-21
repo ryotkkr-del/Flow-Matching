@@ -69,6 +69,6 @@ def main():
     result={'before':before,'after':after,
             'relative_heldout_loss_change':after['heldout_fm_mse']/before['heldout_fm_mse']-1,
             'note':'Held-out FM MSE is not an image-quality metric; inspect the fixed-seed grids.'}
-    (folder/'evaluation.json').write_text(json.dumps(result,indent=2))
+    (folder/'evaluation.json').write_text(json.dumps(result,indent=2),encoding='utf-8')
     print(json.dumps(result,indent=2),flush=True)
 if __name__=='__main__':main()

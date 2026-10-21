@@ -17,7 +17,7 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument('--epochs', type=int, default=20)
     p.add_argument('--batch-size', type=int, default=128)
-    p.add_argument('--lr', type=float, default=2e-4)
+    p.add_argument('--lr', type=float, default=None, help='新規は2e-4。再開時は未指定なら保存値、指定時は上書き')
     p.add_argument('--base', type=int, choices=[16,32,48,64], default=32)
     p.add_argument('--seed', type=int, default=42)
     p.add_argument('--threads', type=int, default=4)
@@ -29,7 +29,7 @@ def main():
     p.add_argument('--offline', action='store_true')
     p.add_argument('--max-batches', type=int, default=0, help='動作確認専用。品質確認用学習には使わない')
     a = p.parse_args()
-    if a.epochs < 1 or a.batch_size < 1 or a.lr <= 0 or a.threads < 1: p.error('正の値を指定してください')
+    if a.epochs < 1 or a.batch_size < 1 or (a.lr is not None and a.lr <= 0) or a.threads < 1 or a.max_batches < 0: p.error('正の値を指定してください')
     torch.set_num_threads(a.threads)
     random.seed(a.seed); np.random.seed(a.seed); torch.manual_seed(a.seed)
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -43,11 +43,13 @@ def main():
     saved = torch.load(a.resume, map_location='cpu', weights_only=True) if a.resume else None
     if saved: config = saved.get('model_config', {'base':32,'time_dim':64})
     model = TinyUNet(**config).to(device)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=a.lr)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=2e-4 if a.lr is None else a.lr)
     history, start = [], 0
     if saved:
         model.load_state_dict(saved['model']); optimizer.load_state_dict(saved['optimizer'])
         history = saved['loss_history']; start = saved['epoch']
+        if a.lr is not None:
+            for group in optimizer.param_groups:group['lr']=a.lr
         if 'rng' in saved: torch.set_rng_state(saved['rng'])
         if device=='cuda' and saved.get('cuda_rng') is not None: torch.cuda.set_rng_state_all(saved['cuda_rng'])
     Path(a.out).parent.mkdir(parents=True, exist_ok=True)
@@ -65,7 +67,7 @@ def main():
             if not torch.isfinite(loss): raise ValueError('lossが非有限値になりました')
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1., error_if_nonfinite=True)
             optimizer.step()
             total += loss.item() * len(x1); seen += len(x1)
             if (index + 1) % 100 == 0:
@@ -78,9 +80,10 @@ def main():
                 'seed':a.seed, 'samples_per_epoch':seen, 'smoke_only':bool(a.max_batches),
                 'normalization':'2*x-1', 'training_args':vars(a),
                 'precision': 'bf16-autocast' if a.bf16 else 'float32',
-                'epoch_seconds': time.perf_counter()-epoch_started}
+                'epoch_seconds': time.perf_counter()-epoch_started,
+                'learning_rates': [group['lr'] for group in optimizer.param_groups]}
         torch.save(data, a.out+'.tmp'); os.replace(a.out+'.tmp', a.out)
-        Path(a.out+'.history.json').write_text(json.dumps(history))
+        Path(a.out+'.history.json').write_text(json.dumps(history),encoding='utf-8')
         print(f'epoch {epoch+1}/{a.epochs} loss={history[-1]:.6f} samples={seen} device={device} seconds={data["epoch_seconds"]:.1f}', flush=True)
         if a.stop_file and Path(a.stop_file).exists():
             print('停止要求を確認。checkpoint保存済み。', flush=True)

@@ -9,8 +9,8 @@ from ai.trajectory import generate_path,payload,validate_payload,load_model
 torch.set_num_threads(2)
 
 def test_original_core_preserved():
-    n=json.loads(Path('notebooks/original.ipynb').read_text())
-    source=Path('ai/core.py').read_text()
+    n=json.loads(Path('notebooks/original.ipynb').read_text(encoding='utf-8'))
+    source=Path('ai/core.py').read_text(encoding='utf-8')
     assert ''.join(n['cells'][4]['source']).split('# 数学と形')[0] in source
     assert ''.join(n['cells'][6]['source']).split('model = TinyUNet')[0] in source
 
