@@ -38,7 +38,7 @@ def test_actual_euler_trajectory_and_no_clamp():
     validate_payload(d)
     d['states'][1][0][0]+=1
     import pytest
-    with pytest.raises(AssertionError):validate_payload(d)
+    with pytest.raises(ValueError):validate_payload(d)
 
 def test_initial_noise_step_comparison_and_repeatability():
     a,_=generate_path(Constant(),42,4,10);b,_=generate_path(Constant(),42,4,20)
@@ -49,3 +49,29 @@ def test_checkpoint_roundtrip(tmp_path):
     p=tmp_path/'m.pt';m=TinyUNet();torch.save({'model':m.state_dict(),'model_config':{'base':32,'time_dim':64}},p)
     loaded,info=load_model(p)
     for a,b in zip(m.parameters(),loaded.parameters()):assert torch.equal(a,b)
+
+
+def test_loaded_hash_matches_loaded_weights_if_file_is_replaced(tmp_path):
+    import hashlib
+    from unittest.mock import patch
+    p=tmp_path/'changing.pt';first=TinyUNet(base=16);second=TinyUNet(base=16)
+    torch.save({'model':first.state_dict(),'model_config':{'base':16}},p)
+    raw=p.read_bytes();real_load=torch.load
+    def replacing_load(*args,**kwargs):
+        torch.save({'model':second.state_dict(),'model_config':{'base':16}},p)
+        return real_load(*args,**kwargs)
+    with patch('ai.trajectory.torch.load',side_effect=replacing_load):loaded,info=load_model(p)
+    assert info['_source_sha256']==hashlib.sha256(raw).hexdigest()
+    assert info['_source_sha256']!=hashlib.sha256(p.read_bytes()).hexdigest()
+    for a,b in zip(first.parameters(),loaded.parameters()):assert torch.equal(a,b)
+
+
+def test_bf16_loss_and_gradients_remain_finite():
+    torch.manual_seed(7);m=TinyUNet(base=16);x=torch.rand(2,1,28,28)*2-1
+    t,xt,target=sample_path(x)
+    fp32=(m(xt,t)-target).square().mean()
+    with torch.autocast('cpu',dtype=torch.bfloat16):
+        loss=torch.nn.functional.mse_loss(m(xt,t),target)
+    assert abs(loss.item()-fp32.item())/fp32.item()<.005
+    loss.backward()
+    assert all(p.dtype==torch.float32 and p.grad is not None and torch.isfinite(p.grad).all() for p in m.parameters())

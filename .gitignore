@@ -7,3 +7,6 @@ checkpoints/*
 demos/*.gz
 demos/*.png
 *.tmp
+demos/.*
+quality/
+STOP_TRAINING

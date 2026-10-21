@@ -5,7 +5,7 @@ class Element {
  getContext(){return this.context}append(...xs){this.children.push(...xs)}replaceChildren(...xs){this.children=xs}setAttribute(n,v){this[n]=v}querySelector(){return this.children.find(c=>c instanceof Element)}after(){}click(){this.onclick?.()}showModal(){this.open=true}close(){this.open=false}
 }
 function setup(){const ids=new Map(),get=id=>{if(!ids.has(id))ids.set(id,new Element());return ids.get(id)};
- const context={document:{getElementById:get,createElement:()=>new Element(),documentElement:{}},console,requestAnimationFrame(){},setTimeout,Uint8ClampedArray,Uint32Array,crypto:require('node:crypto').webcrypto,window:{},Blob,URL,fetch:()=>{throw Error('unexpected inference/network request')}};
+ const context={document:{getElementById:get,createElement:()=>new Element(),documentElement:{}},console,requestAnimationFrame(){},setTimeout,clearTimeout,Uint8ClampedArray,Uint32Array,crypto:require('node:crypto').webcrypto,window:{},Blob,URL,fetch:()=>{throw Error('unexpected inference/network request')}};
  vm.createContext(context);vm.runInContext(fs.readFileSync('web/app.js','utf8').replace(/init\(\);\s*$/,''),context);
  return {context,get,run:s=>vm.runInContext(s,context)};
 }
@@ -17,3 +17,24 @@ test('final frame displays last real update interval',()=>{const {context,get,ru
 test('resume and restart preserve stored trajectory',()=>{const {context,get,run}=setup();context.d=fixture();run('setRoute(d);frame=cursor=3;setPlaying(true);setPlaying(false)');assert.equal(run('frame'),3);get('restart').onclick();assert.equal(run('frame'),0);assert.equal(run('route'),context.d);assert.equal(run('playing'),false)});
 test('pixel mapping clips display only and uses signed velocity colors',()=>{const {context,run}=setup();run("draw('main',Array(784).fill(2))");assert.equal(run("scratch.pixels[0]"),255);run("draw('velocity',Array(784).fill(-1),'velocity',1)");assert.equal(run("scratch.pixels[0]"),246);assert.equal(run("scratch.pixels[1]"),172);context.d=fixture();context.d.states[0][0][0]=-2;assert.equal(context.d.states[0][0][0],-2)});
 test('comparison synchronizes nearest discrete times and preserves labels',()=>{const {context,get,run}=setup();context.d=fixture(10);context.old=fixture(5);run('setRoute(d);comparison(old);frame=5;render()');assert.match(get('compare-note').textContent,/旧 t=0.600 ／ 新 t=0.500/);assert.equal(get('comparison-section').hidden,false)});
+
+test('recorded demos support same-noise step comparison without inference',async()=>{
+ const {context,get,run}=setup();context.d=fixture(5);run("setRoute(d);demoNames=['seed42-steps20.json.gz'];modelReady=false");get('steps').value='20';
+ const urls=[];context.fetch=async url=>{urls.push(url);return {ok:true,json:async()=>fixture(20)}};
+ await run('generate(true)');
+ assert.deepEqual(urls,['/api/demos/seed42-steps20.json.gz']);assert.equal(run('route.steps'),20);assert.equal(run('previous.steps'),5);assert.equal(get('comparison-section').hidden,false);assert.equal(run('busy'),false);
+});
+test('recorded comparison refuses a different checkpoint',async()=>{
+ const {context,get,run}=setup();context.d=fixture(5);run("setRoute(d);demoNames=['seed42-steps20.json.gz'];modelReady=false");get('steps').value='20';
+ const d=fixture(20);d.checkpoint_sha256='b'.repeat(64);context.fetch=async()=>({ok:true,json:async()=>d});
+ await run('generate(true)');assert.equal(run('route.steps'),5);assert.match(get('notice').textContent,/モデルが異なる/);
+});
+test('auto mode restarts a real stored route and slider stops auto mode',async()=>{
+ const {context,get,run}=setup();context.d=fixture(5);run('setRoute(d);frame=cursor=5');get('auto').onclick();assert.equal(run('autoMode'),true);assert.equal(run('frame'),0);assert.equal(run('playing'),true);
+ get('time').value='2';get('time').oninput();assert.equal(run('autoMode'),false);assert.equal(run('playing'),false);assert.equal(run('frame'),2);
+});
+test('manual selection wins over a pending automatic demo load',async()=>{
+ const {context,get,run}=setup();context.d=fixture(5);run("setRoute(d);demoNames=['seed42-steps50.json.gz'];autoMode=true");let resolve;
+ context.fetch=()=>new Promise(r=>{resolve=r});const pending=run('advanceAuto()');run('stopAuto();frame=cursor=3;render()');resolve({ok:true,json:async()=>fixture(50)});await pending;
+ assert.equal(run('route.steps'),5);assert.equal(run('frame'),3);assert.equal(run('autoMode'),false);
+});

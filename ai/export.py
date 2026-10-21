@@ -23,7 +23,7 @@ def main():
     model, info = load_model(a.checkpoint, device)
     if info.get('smoke_only'): raise ValueError('動作確認のみのモデルは展示デモに書き出せません')
     folder=Path(a.out); folder.mkdir(parents=True, exist_ok=True)
-    sha=fingerprint(a.checkpoint)
+    sha=info['_source_sha256']
     for seed in a.seeds:
         for steps in a.steps:
             x,v=generate_path(model, seed, a.count, steps, device)

@@ -3,7 +3,6 @@ import gzip
 import json
 import os
 import threading
-import uuid
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -36,7 +35,7 @@ def initialize():
         torch.set_num_threads(int(os.getenv('FLOW_THREADS','4')))
         model, info = load_model(checkpoint)
         if info.get('smoke_only'): raise ValueError('動作確認用モデルです。本学習を実行してください。')
-        model_sha = fingerprint(checkpoint)
+        model_sha = info['_source_sha256']
     except Exception as e:
         model=None; load_error=f'{type(e).__name__}: {e}'
 
@@ -63,10 +62,14 @@ def work(key, request):
         x,v=generate_path(model,request.seed,request.count,request.steps)
         data=pack(payload(x,v,seed=request.seed,steps=request.steps,checkpoint_sha256=model_sha,
                           epoch=info.get('epoch',0),loss_history=info.get('loss_history')))
+        if len(data)>MAX_CACHE_BYTES:
+            raise ValueError('生成経路がキャッシュ上限を超えました。枚数かステップを減らしてください。')
         with lock:
-            cache[key]=data; cache_bytes+=len(data)
-            while cache_bytes>MAX_CACHE_BYTES and len(cache)>1:
+            replaced=cache.pop(key,None)
+            if replaced is not None:cache_bytes-=len(replaced)
+            while cache and cache_bytes+len(data)>MAX_CACHE_BYTES:
                 _, old=cache.popitem(last=False); cache_bytes-=len(old)
+            cache[key]=data;cache_bytes+=len(data)
             jobs[key]={'state':'ready'}
     except Exception as e:
         with lock: jobs[key]={'state':'error','error':str(e)}
