@@ -68,7 +68,7 @@ CDN、外部フォント、外部APIは使用しません。起動時に学習�
 ### 保存デモだけで展示する
 
 チェックポイントなしでも、`demos/*.json.gz` があればその軌道を自動再生します。
-Python環境と依存パッケージは必要です。画面下部の「経路を読み込む」からJSON/gzの手動読込も可能。
+Python環境と依存パッケージは必要です。新規生成をしないPCでは `pip install -r requirements-replay.txt` だけで再生可能です（PyTorch不要）。画面下部の「経路を読み込む」からJSON/gzの手動読込も可能。
 チェックポイントなしでは新しい生成・新しいステップ数での推論はできません。
 本番前に複数seed・ステップ数の軌道を保存しておくとCPUの待ち時間を避けられます。
 
@@ -123,5 +123,6 @@ JSONにhashが書かれているだけでは出所の証明にはなりません
 .venv\Scripts\python -m pytest -q
 ```
 
-Node.jsがある場合 `node --check web/app.js`。
+Node.jsがある場合 `node --check web/app.js` と `node --test tests/test_ui.cjs`。
+UIのロジック単体テストはブラウザの見た目・操作確認とは別です。
 `npm run dev` はUIレビュー用の保存デモ専用サーバーで、新規推論はありません。展示の本体はPythonサーバーです。

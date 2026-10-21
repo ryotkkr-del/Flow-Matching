@@ -1,0 +1,3 @@
+# 保存済みデモだけの展示用。学習・新規生成にはrequirements.txtを使用。
+fastapi>=0.115,<1
+uvicorn>=0.30,<1

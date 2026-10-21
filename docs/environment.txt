@@ -1,0 +1,12 @@
+anyio==4.15.1
+fastapi==0.156.4
+httpcore==1.0.9
+httpx==0.28.1
+numpy==2.3.5
+pillow==12.3.0
+pydantic==2.14.0
+pytest==9.1.1
+starlette==1.9.0
+torch==2.14.1
+torchvision==0.29.1
+uvicorn==0.54.0
