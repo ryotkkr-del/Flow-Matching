@@ -4,7 +4,7 @@ let route=null, previous=null, selected=0, frame=0, playing=false, last=0, curso
 let modelReady=false, demoNames=[], autoMode=false, autoTimer=null, loadVersion=0, autoIndex=-1;
 const scratch=document.createElement('canvas');scratch.width=scratch.height=28;const sx=scratch.getContext('2d');
 const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
-function message(text,error=false){$('notice').textContent=text;$('notice').classList.toggle('error',error)}
+function message(text,error=false){$('notice').textContent=text;$('notice').hidden=!error;$('notice').classList.toggle('error',error)}
 function draw(id,values,mode='image',scale=1){
  const canvas=typeof id==='string'?$(id):id,ctx=canvas.getContext('2d'),pixels=sx.createImageData(28,28);
  for(let i=0;i<784;i++){
@@ -53,7 +53,7 @@ function render(){
  draw('main',x);draw('final',d.states[d.steps][selected]);draw('current',d.states[k][selected]);draw('velocity',v,'velocity',velocityScale);draw('next',d.states[k+1][selected]);draw('heat',v.map(z=>Math.abs(z)/d.steps),'heat',heatScale);
  $('frame-label').textContent=`t = ${(frame/d.steps).toFixed(3)}`;$('step-label').textContent=`${frame} / ${d.steps}`;$('time').value=frame;$('seed-label').textContent=`SEED ${d.seed} / IMAGE ${selected+1}`;
  $('dt').textContent=`t = ${(k/d.steps).toFixed(3)} → ${((k+1)/d.steps).toFixed(3)} · Δt = ${(1/d.steps).toFixed(3)}`;
- $('stage-caption').textContent=frame===0?'ノイズからスタート':frame===d.steps?'ひとつの数字に、たどり着く。':'AIの指示で、少しずつ変わっていく。';
+ $('stage-caption').textContent=frame===0?'ノイズ':frame===d.steps?'完了':'生成途中';
  Array.from($('gallery').children).forEach((b,j)=>{b.classList.toggle('active',j===selected);draw(b.querySelector('canvas'),d.states[frame][j])});
  if(previous){
   const oldFrame=Math.round(frame/d.steps*previous.steps);
@@ -61,7 +61,7 @@ function render(){
   $('compare-note').textContent=`同一の初期ノイズ・画像${selected+1}。旧 t=${(oldFrame/previous.steps).toFixed(3)} ／ 新 t=${(frame/d.steps).toFixed(3)}（各軌道の最寄りの計算時刻）。`;
  }
 }
-function setPlaying(value){playing=value;last=0;$('play').textContent=value?'Ⅱ':'▶';$('play').setAttribute('aria-label',value?'一時停止':'再生');$('play-state').textContent=route?(value?'実際の計算結果を再生しています':'スライダーで好きな瞬間へ'):'生成経路の読み込み待ち'}
+function setPlaying(value){playing=value;last=0;$('play').textContent=value?'Ⅱ':'▶';$('play').setAttribute('aria-label',value?'一時停止':'再生');$('play-state').textContent=route?(value?'再生中':'停止中'):'生成経路の読み込み待ち'}
 function tick(time){
  if(playing&&route){if(last){cursor+=(time-last)/1000*route.steps/8*Number($('speed').value);const n=Math.min(route.steps,Math.floor(cursor));if(n!==frame){frame=n;render()}if(cursor>=route.steps){setPlaying(false);if(autoMode)autoTimer=setTimeout(advanceAuto,1100)}}last=time}
  requestAnimationFrame(tick);
