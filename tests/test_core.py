@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 import torch
 from ai.core import TinyUNet,sample_path
-from ai.trajectory import generate_path,payload,validate_payload,load_model
+from ai.trajectory import generate_path,payload,validate_payload,load_model,initial_noise
 
 torch.set_num_threads(2)
 
@@ -94,3 +94,10 @@ def test_progress_callback_emits_real_euler_states():
     for k,live in frames:
         torch.testing.assert_close(live,states[k],rtol=0,atol=0)
     torch.testing.assert_close(states[1:]-states[:-1],velocities/7)
+
+
+def test_preview_noise_is_identical_to_true_inference_initial_state():
+    for seed,count in [(42,4),(777,1),(2147483647,4)]:
+        preview=initial_noise(seed,count)
+        states,_=generate_path(Constant(),seed=seed,count=count,steps=5)
+        torch.testing.assert_close(preview,states[0],rtol=0,atol=0)
