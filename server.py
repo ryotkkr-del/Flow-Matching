@@ -47,6 +47,16 @@ class Request(BaseModel):
     steps: int = Field(default=50,ge=5,le=100)
     count: int = Field(default=4,ge=1,le=4)
 
+@app.get('/api/noise')
+def noise(seed:int=Query(default=42,ge=0,le=2147483647),
+          count:int=Query(default=4,ge=1,le=4)):
+    if model is None:
+        raise HTTPException(503,'リアルタイム生成には学習済みモデルが必要です。')
+    from ai.trajectory import initial_noise
+    # No model forward pass. The same x0 is later used in /api/generate.
+    return {'seed':seed, 'count':count, 'pixels':initial_noise(seed,count).flatten(1).tolist()}
+
+
 @app.get('/api/status')
 def status():
     return {'ready':model is not None, 'checkpoint':checkpoint.name, 'checkpoint_sha256':model_sha,

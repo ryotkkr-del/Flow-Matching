@@ -7,6 +7,7 @@ class Element {
 function setup(){const ids=new Map(),get=id=>{if(!ids.has(id))ids.set(id,new Element());return ids.get(id)};
  const context={document:{getElementById:get,createElement:()=>new Element(),documentElement:{}},console,requestAnimationFrame(){},setTimeout,clearTimeout,Uint8ClampedArray,Uint32Array,crypto:require('node:crypto').webcrypto,window:{},Blob,URL,fetch:()=>{throw Error('unexpected inference/network request')}};
  vm.createContext(context);vm.runInContext(fs.readFileSync('web/app.js','utf8').replace(/init\(\);\s*$/,''),context);
+ get('seed').value='42';get('steps').value='50';get('count').value='4';
  return {context,get,run:s=>vm.runInContext(s,context)};
 }
 function fixture(steps=5){return {format:1,method:'euler',seed:42,steps,count:1,epoch:1,checkpoint_sha256:'a'.repeat(64),times:Array.from({length:steps+1},(_,k)=>k/steps),states:Array.from({length:steps+1},(_,k)=>[Array(784).fill(k/steps)]),velocities:Array.from({length:steps},()=>[Array(784).fill(1)])}}
@@ -73,4 +74,65 @@ test('four simultaneous samples update and remain selectable during live inferen
  run('showLiveFrame(next,3,20,9)');
  assert.equal(run('livePicked'),2);
  assert.equal(run('scratch.pixels[0]'),85);
+});
+
+
+test('startup with a model displays x0 and never starts inference automatically',async()=>{
+ const {context,get,run}=setup(),called=[];
+ context.fetch=async (url,opts)=>{
+   called.push([url,opts?.method||'GET']);
+   if(url==='/api/status')return {ok:true,json:async()=>({ready:true,epoch:25,demos:[]})};
+   if(url==='/api/noise?seed=42&count=4')
+     return {ok:true,json:async()=>({seed:42,count:4,pixels:Array.from({length:4},(_,k)=>Array(784).fill(-1+k/3))})};
+   throw Error('unexpected request '+url);
+ };
+ await run('init()');
+ assert.deepEqual(called,[['/api/status','GET'],['/api/noise?seed=42&count=4','GET']]);
+ assert.equal(run('route'),null);
+ assert.equal(run('playing'),false);
+ assert.equal(get('stage-caption').textContent,'生成開始を押してください');
+ assert.equal(get('generate').textContent,'生成開始 ↗');
+ assert.equal(get('step-label').textContent,'0 / 50');
+ assert.equal(get('final').hidden,true);
+ assert.equal(get('final-wait').hidden,false);
+ assert.equal(get('live-progress').hidden,true);
+ assert.equal(get('gallery').children.length,4);
+ assert.equal(get('generate').disabled,false);
+ assert.equal(get('play').disabled,true);
+});
+
+test('selecting a different seed only changes initial noise, with no generate request',async()=>{
+ const {context,get,run}=setup(),called=[];
+ run('modelReady=true');
+ context.fetch=async url=>{
+   called.push(url);
+   if(url.startsWith('/api/noise?'))return {ok:true,json:async()=>({
+    seed:Number(new URL('http://localhost'+url).searchParams.get('seed')),count:4,
+    pixels:Array.from({length:4},()=>Array(784).fill(-0.5))
+   })};
+   throw Error('unexpected request');
+ };
+ get('seed').value='43';
+ await get('seed').onchange();
+ assert.deepEqual(called,['/api/noise?seed=43&count=4']);
+ assert.equal(get('seed-label').textContent,'SEED 43 / NOISE');
+ assert.equal(run('route'),null);
+ assert.equal(get('stage-caption').textContent,'生成開始を押してください');
+});
+
+test('saved demo opens paused at noise, never autoplaying on launch',async()=>{
+ const {context,get,run}=setup(),calls=[];
+ context.fetch=async url=>{
+  calls.push(url);
+  if(url==='/api/status')return {ok:true,json:async()=>({ready:false,demos:['seed42-steps50.json.gz']})};
+  if(url==='/api/demos/seed42-steps50.json.gz')return {ok:true,json:async()=>fixture(50)};
+  throw Error('unexpected request '+url);
+ };
+ await run('init()');
+ assert.deepEqual(calls,['/api/status','/api/demos/seed42-steps50.json.gz']);
+ assert.equal(run('playing'),false);
+ assert.equal(run('frame'),0);
+ assert.equal(get('final').hidden,true);
+ assert.equal(get('stage-caption').textContent,'再生開始を押してください');
+ assert.equal(get('generate').textContent,'保存デモを再生 ↗');
 });
