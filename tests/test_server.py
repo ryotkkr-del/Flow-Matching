@@ -135,7 +135,7 @@ def test_live_job_progress_and_after_cursor(monkeypatch):
             assert d['total']==10
             assert len(d['preview'])==1 and len(d['preview'][0])==784
             duplicate=c.get(f"/api/jobs/{key}?after={d['step']}").json()
-            if duplicate['state']=='running':
+            if duplicate['state']=='running' and duplicate['step']==d['step']:
                 assert duplicate['preview'] is None
             observed.append(d['step'])
         time.sleep(.01)
