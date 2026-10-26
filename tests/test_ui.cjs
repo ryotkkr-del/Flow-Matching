@@ -58,3 +58,19 @@ test('inference preview draws real server frame and updates progress label',()=>
  assert.equal(get('main').pixels?.length,undefined); // large canvas compositing is exercised through scratch
  assert.equal(run('scratch.pixels[0]'),Math.round((0.3+1)/2*255));
 });
+
+
+test('four simultaneous samples update and remain selectable during live inference',()=>{
+ const {context,get,run}=setup();
+ context.frames=[0,1,2,3].map(n=>Array(784).fill(-1+n/2));
+ run('showLiveFrame(frames,2,20,9)');
+ assert.equal(get('gallery-section').hidden,false);
+ assert.equal(get('gallery').children.length,4);
+ get('gallery').children[2].onclick();
+ assert.equal(run('livePicked'),2);
+ assert.equal(run('scratch.pixels[0]'),128);
+ context.next=[0,1,2,3].map(n=>Array(784).fill(-1+n/3));
+ run('showLiveFrame(next,3,20,9)');
+ assert.equal(run('livePicked'),2);
+ assert.equal(run('scratch.pixels[0]'),85);
+});
