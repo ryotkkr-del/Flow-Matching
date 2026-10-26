@@ -7,6 +7,7 @@ class Element {
 function setup(){const ids=new Map(),get=id=>{if(!ids.has(id))ids.set(id,new Element());return ids.get(id)};
  const context={document:{getElementById:get,createElement:()=>new Element(),documentElement:{}},console,requestAnimationFrame(){},setTimeout,clearTimeout,Uint8ClampedArray,Uint32Array,crypto:require('node:crypto').webcrypto,window:{},Blob,URL,fetch:()=>{throw Error('unexpected inference/network request')}};
  vm.createContext(context);vm.runInContext(fs.readFileSync('web/app.js','utf8').replace(/init\(\);\s*$/,''),context);
+ get('seed').value='42';get('steps').value='50';get('count').value='4';
  return {context,get,run:s=>vm.runInContext(s,context)};
 }
 function fixture(steps=5){return {format:1,method:'euler',seed:42,steps,count:1,epoch:1,checkpoint_sha256:'a'.repeat(64),times:Array.from({length:steps+1},(_,k)=>k/steps),states:Array.from({length:steps+1},(_,k)=>[Array(784).fill(k/steps)]),velocities:Array.from({length:steps},()=>[Array(784).fill(1)])}}
