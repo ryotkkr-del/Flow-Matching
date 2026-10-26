@@ -16,6 +16,19 @@ function draw(id,values,mode='image',scale=1){
  }
  sx.putImageData(pixels,0,0);ctx.imageSmoothingEnabled=false;ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(scratch,0,0,canvas.width,canvas.height);
 }
+// 推論の最中に到着した実フレーム。保存経路の再生とは区別して表示する。
+function showLiveFrame(preview,step,steps,seed){
+ if(!Array.isArray(preview)||!preview.length||preview.some(a=>!Array.isArray(a)||a.length!==784||a.some(v=>typeof v!=='number'||!Number.isFinite(v))))
+  throw Error('途中画像の形式が不正です');
+ $('empty').hidden=true;
+ draw('main',preview[0]);
+ $('frame-label').textContent=`t = ${(step/steps).toFixed(3)}`;
+ $('seed-label').textContent=`SEED ${seed} / LIVE`;
+ $('stage-caption').textContent='AIが実際に計算中';
+ $('step-label').textContent=`${step} / ${steps}`;
+ $('live-progress').hidden=false;
+ $('live-progress').textContent=`● リアルタイム生成中  ${step} / ${steps} step`;
+}
 function validate(d){
  if(d.weights!==undefined&&!['raw','ema'].includes(d.weights))throw Error('重みの種類が不正です');
  if(d?.format!==1||d.method!=='euler'||!Number.isInteger(d.steps)||d.steps<1||d.steps>200||!Number.isInteger(d.count)||d.count<1||d.count>8)throw Error('対応していない生成経路です');
@@ -33,6 +46,7 @@ function validate(d){
 }
 function setRoute(d){
  route=validate(d);selected=0;frame=cursor=0;setPlaying(false);
+ $('live-progress').hidden=true;$('final').hidden=false;$('final-wait').hidden=true;
  $('empty').hidden=true;$('time').disabled=false;$('time').max=d.steps;$('time').value=0;$('play').disabled=false;$('save').disabled=false;
  $('seed').value=d.seed;$('steps').value=[20,50,100].includes(d.steps)?d.steps:'50';$('count').value=d.count===1?'1':'4';
  velocityScale=1e-8;
@@ -107,8 +121,14 @@ async function generate(compare=false){
  if(compare&&(!old||old.seed!==seed||old.count!==count)){message('比較には、表示中と同じノイズ番号・同時生成枚数を指定してください',true);return}
  if(compare&&old.steps===steps){message('計算ステップを変更してから比較してください',true);return}
  if(compare&&old.count>4){message('比較は4枚以下で行ってください',true);return}
- stopAuto();const version=++loadVersion;setBusy(true);
- message(modelReady?'実際のODE軌道を計算しています。しばらくお待ちください。':'保存済みの実生成経路を読み込んでいます。');
+ stopAuto();const version=++loadVersion;setPlaying(false);setBusy(true);
+ if(modelReady){
+  $('play').disabled=true;$('restart').disabled=true;$('time').disabled=true;$('auto').disabled=true;
+  $('final').hidden=true;$('final-wait').hidden=false;
+  $('live-progress').hidden=false;$('live-progress').textContent='AIの生成を開始しています…';
+  $('gallery-section').hidden=true;
+ }
+ message(modelReady?'学習済みAIが今、ノイズから画像を生成しています。':'保存済みの実生成経路を読み込んでいます。');
  try{
   let d;
   if(!modelReady){
@@ -118,10 +138,17 @@ async function generate(compare=false){
    if(d.count!==count)throw Error(`このデモは${d.count}枚です。同時生成の枚数を合わせてください。`);
   }else{
    const j=await fetchJson('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({seed,steps,count})});
-   const started=Date.now();let state=j.state;
+   const started=Date.now();let state=j.state,seen=-1;
    while(state!=='ready'){
-    await new Promise(r=>setTimeout(r,400));const status=await fetchJson(`/api/jobs/${j.id}`);state=status.state;
+    await new Promise(r=>setTimeout(r,160));
+    if(version!==loadVersion)return;
+    const status=await fetchJson(`/api/jobs/${encodeURIComponent(j.id)}?after=${seen}`);
+    state=status.state;
     if(state==='error')throw Error(status.error);
+    if(state==='running'&&Array.isArray(status.preview)&&Number.isInteger(status.step)&&status.step>seen){
+     showLiveFrame(status.preview,status.step,steps,seed);
+     seen=status.step;
+    }
     if(Date.now()-started>300000)throw Error('5分を超えました。計算は継続中の場合があります。同じ条件で再試行すると既存の処理を確認できます。');
    }
    d=validate(await fetchJson(`/api/paths/${j.id}`));
@@ -129,8 +156,21 @@ async function generate(compare=false){
   if(version!==loadVersion)return;
   if(compare){if(d.checkpoint_sha256!==old.checkpoint_sha256||(d.weights||'raw')!==(old.weights||'raw'))throw Error('モデルが異なるためステップ数だけの比較はできません');for(let j=0;j<count;j++)if(d.states[0][j].some((v,i)=>v!==old.states[0][j][i]))throw Error('初期ノイズが一致しません')}
   previous=null;$('comparison-section').hidden=true;setRoute(d);if(compare)comparison(old);
-  message(modelReady?'生成完了。実際のODE計算の途中を自由にたどれます。':'保存デモを再生中。実モデルが計算した経路を自由にたどれます。');setPlaying(true);
- }catch(e){if(version===loadVersion)message(e.message,true)}finally{setBusy(false)}
+  message(modelReady?'生成完了。実際のODE計算の途中を自由にたどれます。':'保存デモを再生中。実モデルが計算した経路を自由にたどれます。');
+  if(modelReady){frame=cursor=d.steps;render();setPlaying(false)}
+  else setPlaying(true);
+ }catch(e){
+  if(version===loadVersion){
+   message(e.message,true);
+   if(route)render();else $('empty').hidden=false;
+  }
+ }finally{
+  if(version===loadVersion){
+   $('live-progress').hidden=true;$('final').hidden=false;$('final-wait').hidden=true;
+   $('play').disabled=!route;$('restart').disabled=!route;$('time').disabled=!route;$('auto').disabled=false;
+  }
+  setBusy(false);
+ }
 }
 $('generate').textContent='このノイズで生成 ↗';$('generate').onclick=()=>generate();$('compare').onclick=()=>generate(true);
 const randomButton=document.createElement('button');randomButton.textContent='別のノイズへ ↻';randomButton.className='secondary';randomButton.onclick=()=>{
