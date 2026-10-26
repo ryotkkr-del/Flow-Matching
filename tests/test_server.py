@@ -15,6 +15,8 @@ def test_missing_model_and_static(monkeypatch):
     assert c.get('/web/app.js').status_code==200
     assert not c.get('/api/status').json()['ready']
     assert c.post('/api/generate',json={}).status_code==503
+    assert c.get('/api/noise').status_code==503
+    assert c.get('/api/noise?seed=-1').status_code==422
     assert c.get('/api/demos/missing.json.gz').status_code==404
 
 
@@ -147,3 +149,20 @@ def test_live_job_progress_and_after_cursor(monkeypatch):
     for step in observed:
         assert 0<=step<=10
     assert full['count']==1
+
+
+def test_noise_endpoint_only_previews_seeded_x0(monkeypatch):
+    monkeypatch.setattr(server,'model',Constant())
+    monkeypatch.setattr(server,'model_sha','f'*64)
+    monkeypatch.setattr(server,'info',{'epoch':1})
+    server.jobs.clear()
+    c=TestClient(server.app)
+    noise=c.get('/api/noise?seed=99&count=4')
+    assert noise.status_code==200
+    data=noise.json()
+    assert data['seed']==99 and data['count']==4
+    assert len(data['pixels'])==4 and all(len(x)==784 for x in data['pixels'])
+    assert not server.jobs, 'preview must not start an inference job'
+    from ai.trajectory import initial_noise
+    assert data['pixels']==initial_noise(99,4).flatten(1).tolist()
+    assert c.get('/api/noise?count=9').status_code==422
