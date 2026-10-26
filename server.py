@@ -6,7 +6,7 @@ import threading
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -60,7 +60,15 @@ def work(key, request):
     global cache_bytes
     try:
         from ai.trajectory import generate_path,payload
-        x,v=generate_path(model,request.seed,request.count,request.steps)
+        def publish(step, frame):
+            # UIは直近の実計算フレームだけを取得する。古いフレームの大量送信を避ける。
+            preview = frame.flatten(1).tolist()
+            with lock:
+                current = jobs.get(key)
+                if current is not None and current['state'] == 'running':
+                    current['step'] = step
+                    current['preview'] = preview
+        x,v=generate_path(model,request.seed,request.count,request.steps,on_frame=publish)
         data=pack(payload(x,v,seed=request.seed,steps=request.steps,checkpoint_sha256=model_sha,
                           epoch=info.get('epoch',0),loss_history=info.get('loss_history'),weights=info.get('_weights_source','raw')))
         if len(data)>MAX_CACHE_BYTES:
@@ -84,19 +92,23 @@ def generate(request:Request):
             cache.move_to_end(key); return {'id':key,'state':'ready'}
         if key in jobs and jobs[key]['state']=='running': return {'id':key,'state':'running'}
         if any(j['state']=='running' for j in jobs.values()): raise HTTPException(429,'生成中です。完了後にお試しください。')
-        jobs[key]={'state':'running'}
+        jobs[key]={'state':'running','step':-1,'total':request.steps,'preview':None}
         while len(jobs)>64: jobs.popitem(last=False)
     executor.submit(work,key,request)
     return {'id':key,'state':'running'}
 
 @app.get('/api/jobs/{key}')
-def job(key:str):
+def job(key:str, after:int=Query(default=-1,ge=-1,le=100)):
     with lock:
         if key in cache: return {'state':'ready'}
         if key not in jobs: raise HTTPException(404,'生成履歴がありません')
         result=jobs[key]
         if result['state']=='ready': raise HTTPException(410,'キャッシュが削除されました。生成し直してください。')
-        return result
+        if result['state']=='running':
+            # after以降に新しいフレームができた場合のみ返す。
+            return {'state':'running','step':result['step'],'total':result['total'],
+                    'preview':result['preview'] if result['step']>after else None}
+        return {'state':'error','error':result.get('error','生成に失敗しました')}
 
 @app.get('/api/paths/{key}')
 def path(key:str):
