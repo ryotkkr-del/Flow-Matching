@@ -134,7 +134,7 @@ async function prepareNoise(){
  if($('seed').value===''||!Number.isInteger(seed)||seed<0||seed>2147483647){
   message('ノイズ番号は0〜2147483647の整数にしてください',true);$('generate').disabled=true;return;
  }
- stopAuto();
+ stopAuto();setPlaying(false);
  const version=++loadVersion;
  $('generate').disabled=true;
  try{
