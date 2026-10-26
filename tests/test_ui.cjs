@@ -44,3 +44,17 @@ test('step-only comparison rejects raw versus EMA even for the same checkpoint',
  const d=fixture(20);d.weights='ema';context.fetch=async()=>({ok:true,json:async()=>d});
  await run('generate(true)');assert.equal(run('route.steps'),5);assert.match(get('notice').textContent,/モデルが異なる/);
 });
+
+
+test('inference preview draws real server frame and updates progress label',()=>{
+ const {context,get,run}=setup();
+ const values=Array(784).fill(0.3);
+ context.partial=[values];
+ run('showLiveFrame(partial,3,10,345)');
+ assert.equal(get('live-progress').hidden,false);
+ assert.match(get('live-progress').textContent,/3 \/ 10 step/);
+ assert.equal(get('frame-label').textContent,'t = 0.300');
+ assert.equal(get('stage-caption').textContent,'AIが実際に計算中');
+ assert.equal(get('main').pixels?.length,undefined); // large canvas compositing is exercised through scratch
+ assert.equal(run('scratch.pixels[0]'),Math.round((0.3+1)/2*255));
+});
