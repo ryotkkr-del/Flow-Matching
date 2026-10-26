@@ -24,11 +24,16 @@ def fingerprint(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+def initial_noise(seed=42, count=4, device='cpu'):
+    """Generate exactly the same initial noise used by the real Euler sampler."""
+    rng = torch.Generator(device='cpu').manual_seed(seed)
+    return torch.randn(count, 1, 28, 28, generator=rng).to(device)
+
+
 @torch.inference_mode()
 def generate_path(model, seed=42, count=4, steps=50, device='cpu', on_frame=None):
     # CPUで初期ノイズを作り、step数を変えても完全に同じx0を使う。
-    rng = torch.Generator(device='cpu').manual_seed(seed)
-    x = torch.randn(count, 1, 28, 28, generator=rng).to(device)
+    x = initial_noise(seed, count, device=device)
     states = [x.cpu().clone()]
     # 実推論の途中経過を通知する。on_frameがなければ従来通り全経路だけを返す。
     if on_frame is not None:
