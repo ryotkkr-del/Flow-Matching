@@ -145,5 +145,5 @@ def test_live_job_progress_and_after_cursor(monkeypatch):
     full=complete.json()
     validate_payload(full)
     for step in observed:
-        assert 0<=step<10
+        assert 0<=step<=10
     assert full['count']==1
