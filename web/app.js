@@ -2,6 +2,7 @@
 const $=id=>document.getElementById(id);
 let route=null, previous=null, selected=0, frame=0, playing=false, last=0, cursor=0, busy=false, velocityScale=1, heatScale=1;
 let modelReady=false, demoNames=[], autoMode=false, autoTimer=null, loadVersion=0, autoIndex=-1;
+let livePicked=0,livePreview=null,liveStep=0,liveSteps=0,liveSeed=0,liveGalleryReady=false;
 const scratch=document.createElement('canvas');scratch.width=scratch.height=28;const sx=scratch.getContext('2d');
 const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
 function message(text,error=false){$('notice').textContent=text;$('notice').hidden=!error;$('notice').classList.toggle('error',error)}
@@ -20,8 +21,25 @@ function draw(id,values,mode='image',scale=1){
 function showLiveFrame(preview,step,steps,seed){
  if(!Array.isArray(preview)||!preview.length||preview.some(a=>!Array.isArray(a)||a.length!==784||a.some(v=>typeof v!=='number'||!Number.isFinite(v))))
   throw Error('途中画像の形式が不正です');
+ livePreview=preview;liveStep=step;liveSteps=steps;liveSeed=seed;
  $('empty').hidden=true;
- draw('main',preview[0]);
+ if(!liveGalleryReady){
+  $('gallery').replaceChildren();
+  for(let j=0;j<preview.length;j++){
+   const button=document.createElement('button'),c=document.createElement('canvas'),label=document.createElement('span');
+   c.width=c.height=112;label.textContent=`NO. ${String(j+1).padStart(2,'0')}`;
+   button.append(c,label);
+   button.onclick=()=>{livePicked=j;showLiveFrame(livePreview,liveStep,liveSteps,liveSeed)};
+   $('gallery').append(button);
+  }
+  liveGalleryReady=true;
+ }
+ $('gallery-section').hidden=preview.length===1;
+ Array.from($('gallery').children).forEach((button,j)=>{
+  button.classList.toggle('active',j===livePicked);
+  draw(button.querySelector('canvas'),preview[j]);
+ });
+ draw('main',preview[livePicked]);
  $('frame-label').textContent=`t = ${(step/steps).toFixed(3)}`;
  $('seed-label').textContent=`SEED ${seed} / LIVE`;
  $('stage-caption').textContent='AIが実際に計算中';
@@ -126,6 +144,7 @@ async function generate(compare=false){
   $('play').disabled=true;$('restart').disabled=true;$('time').disabled=true;$('auto').disabled=true;
   $('final').hidden=true;$('final-wait').hidden=false;
   $('live-progress').hidden=false;$('live-progress').textContent='AIの生成を開始しています…';
+  livePicked=0;liveGalleryReady=false;livePreview=null;
   $('gallery-section').hidden=true;
  }
  message(modelReady?'学習済みAIが今、ノイズから画像を生成しています。':'保存済みの実生成経路を読み込んでいます。');
@@ -162,7 +181,7 @@ async function generate(compare=false){
  }catch(e){
   if(version===loadVersion){
    message(e.message,true);
-   if(route)render();else $('empty').hidden=false;
+   if(route){setRoute(route);render()}else $('empty').hidden=false;
   }
  }finally{
   if(version===loadVersion){
