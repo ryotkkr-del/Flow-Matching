@@ -105,3 +105,45 @@ def test_recorded_replay_does_not_require_torch(tmp_path):
     ''')
     result=subprocess.run([sys.executable,'-c',script,str(tmp_path)],env={**os.environ,'FLOW_CHECKPOINT':str(tmp_path/'absent.pt')},capture_output=True,text=True)
     assert result.returncode==0,result.stdout+result.stderr
+
+
+def test_live_job_progress_and_after_cursor(monkeypatch):
+    from collections import OrderedDict
+    class SlowConstant(torch.nn.Module):
+        def forward(self,x,t):
+            time.sleep(.025)
+            return torch.full_like(x,7.)
+    monkeypatch.setattr(server,'model',SlowConstant())
+    monkeypatch.setattr(server,'model_sha','d'*64)
+    monkeypatch.setattr(server,'info',{'epoch':1})
+    monkeypatch.setattr(server,'cache',OrderedDict())
+    monkeypatch.setattr(server,'jobs',OrderedDict())
+    monkeypatch.setattr(server,'cache_bytes',0)
+    c=TestClient(server.app)
+    created=c.post('/api/generate',json={'seed':203,'steps':10,'count':1})
+    assert created.status_code==200
+    key=created.json()['id']
+    observed=[]
+    start=time.monotonic()
+    while time.monotonic()-start<5:
+        r=c.get(f'/api/jobs/{key}?after=-1')
+        assert r.status_code==200
+        d=r.json()
+        if d['state']=='ready':break
+        assert d['state']=='running'
+        if d['step']>=0:
+            assert d['total']==10
+            assert len(d['preview'])==1 and len(d['preview'][0])==784
+            duplicate=c.get(f"/api/jobs/{key}?after={d['step']}").json()
+            if duplicate['state']=='running' and duplicate['step']==d['step']:
+                assert duplicate['preview'] is None
+            observed.append(d['step'])
+        time.sleep(.01)
+    assert observed, '計算中の画像が公開されなかった'
+    complete=c.get(f'/api/paths/{key}')
+    assert complete.status_code==200
+    full=complete.json()
+    validate_payload(full)
+    for step in observed:
+        assert 0<=step<=10
+    assert full['count']==1

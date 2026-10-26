@@ -84,3 +84,13 @@ def test_checkpoint_can_select_ema_or_raw_weights(tmp_path):
     assert info['_source_sha256']==info_raw['_source_sha256']
     for x,y in zip(a.parameters(),ema.parameters()):assert torch.equal(x,y)
     for x,y in zip(b.parameters(),raw.parameters()):assert torch.equal(x,y)
+
+
+def test_progress_callback_emits_real_euler_states():
+    frames=[]
+    states,velocities=generate_path(Constant(),seed=31,count=2,steps=7,
+                                     on_frame=lambda step,x:frames.append((step,x.clone())))
+    assert [k for k,_ in frames]==list(range(8))
+    for k,live in frames:
+        torch.testing.assert_close(live,states[k],rtol=0,atol=0)
+    torch.testing.assert_close(states[1:]-states[:-1],velocities/7)

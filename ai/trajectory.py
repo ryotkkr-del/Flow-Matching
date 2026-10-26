@@ -25,11 +25,14 @@ def fingerprint(path):
 
 
 @torch.inference_mode()
-def generate_path(model, seed=42, count=4, steps=50, device='cpu'):
+def generate_path(model, seed=42, count=4, steps=50, device='cpu', on_frame=None):
     # CPUで初期ノイズを作り、step数を変えても完全に同じx0を使う。
     rng = torch.Generator(device='cpu').manual_seed(seed)
     x = torch.randn(count, 1, 28, 28, generator=rng).to(device)
     states = [x.cpu().clone()]
+    # 実推論の途中経過を通知する。on_frameがなければ従来通り全経路だけを返す。
+    if on_frame is not None:
+        on_frame(0, states[0])
     velocities = []
     dt = 1.0 / steps
     model.eval()
@@ -41,6 +44,8 @@ def generate_path(model, seed=42, count=4, steps=50, device='cpu'):
             raise ValueError('非有限値が発生しました。チェックポイントを確認してください。')
         velocities.append(v.cpu().clone())
         states.append(x.cpu().clone())
+        if on_frame is not None:
+            on_frame(k + 1, states[-1])
     return torch.stack(states), torch.stack(velocities)
 
 
