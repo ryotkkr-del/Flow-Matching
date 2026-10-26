@@ -8,10 +8,10 @@
 <div class="stage">
 <section class="hero panel"><div class="panel-heading"><span><b class="live-dot"></b> 生成中の画像 </span><span id="frame-label" class="mono">t = 0.000</span></div>
 <div class="canvas-wrap"><canvas id="main" width="560" height="560" aria-label="選択した時刻の生成画像"></canvas><div class="coordinate bottom" id="seed-label">SEED 42</div><div id="empty" class="empty"><div class="empty-symbol">↗</div><h2>データを読み込んでください</h2><p>学習済みモデルか、保存した生成経路を<br>読み込むと展示が始まります。</p><button id="empty-load">生成経路を読み込む</button></div></div>
-<div class="hero-footer"><span id="stage-caption">ノイズからスタート</span><span class="mono" id="step-label">0 / 50</span></div>
+<div class="hero-footer"><span id="stage-caption">ノイズからスタート</span><span id="live-progress" role="status" aria-live="polite" hidden></span><span class="mono" id="step-label">0 / 50</span></div>
 </section>
 <aside class="side">
-<section class="panel result"><div class="panel-heading"><span>最終画像</span><span class="tag">t = 1</span></div><canvas id="final" width="224" height="224" aria-label="最終生成結果"></canvas></section>
+<section class="panel result"><div class="panel-heading"><span>最終画像</span><span class="tag">t = 1</span></div><canvas id="final" width="224" height="224" aria-label="最終生成結果"></canvas><p id="final-wait" hidden>AIが最終画像を計算しています…</p></section>
 <section class="panel control"><h2>設定</h2><div class="fields"><label>計算ステップ<select id="steps"><option>20</option><option selected>50</option><option>100</option></select></label><label>同時生成<select id="count"><option value="1">1枚</option><option value="4" selected>4枚</option></select></label></div><label class="seed-field">初期ノイズの番号<input id="seed" type="number" value="42" min="0" max="2147483647"></label><button id="generate" class="primary">新しいノイズで生成 <span>↗</span></button><p class="model-note">出てくる数字は指定できません。</p><button id="compare" class="secondary">ステップ数を比較</button><div id="busy" class="busy" hidden><i></i> 計算中…</div></section>
 </aside>
 </div>
