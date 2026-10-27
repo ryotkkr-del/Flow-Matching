@@ -179,3 +179,7 @@ EMAを使っても品質向上が保証されるわけではないため、実�
 ## 最新の品質調整（20→25epoch）
 
 学習率を半分にして5epoch追加しました。[比較画像・測定値・再現手順](docs/QUALITY25.md)。
+
+## しくみの説明スライド
+
+[PDFを見る](docs/slides/Flow_Matching_Beginner.pdf)・[PowerPointをダウンロード](docs/slides/Flow_Matching_Beginner.pptx)。数学の基礎がある初心者向けの全11枚。
