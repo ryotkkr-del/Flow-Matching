@@ -8,3 +8,48 @@
 header #fullscreen{margin-left:auto}.how-it-works{margin:28px 0}.how-it-works h2{font-size:18px;font-weight:500;margin-bottom:18px}.how-it-works ol{display:grid;grid-template-columns:repeat(3,1fr);gap:26px;margin:0;padding-left:22px}.how-it-works li{padding-left:3px;font-size:14px}.how-it-works b{display:block;font-weight:500;margin-bottom:6px}.how-it-works span{display:block;color:var(--muted);line-height:1.8}.model-note{font-size:12px!important;margin:12px 0 0!important;color:var(--muted)}@media(max-width:650px){.how-it-works ol{grid-template-columns:1fr;gap:18px}}
 
 .update-equation{margin-top:24px;padding:18px 22px;border-left:2px solid var(--cyan);background:#10171e}.update-equation math{font-size:24px;text-align:left;display:block;margin:0;color:var(--text)}.update-equation p{font-size:14px;line-height:1.8;margin:12px 0 0;color:var(--muted)}@media(max-width:650px){.update-equation{padding:16px}.update-equation math{font-size:21px}}
+
+/* Use the available exhibition screen width and keep explanations readable. */
+header{max-width:none;width:100%;padding:20px clamp(20px,2.4vw,48px)}
+main{max-width:none;width:100%;margin:0;padding:28px clamp(20px,2.4vw,48px)}
+body{font-size:16px}
+.intro{margin-bottom:22px}
+.intro h1{font-size:clamp(28px,2.2vw,40px)}
+.intro p{font-size:16px}
+.stage{grid-template-columns:minmax(0,1fr) clamp(320px,24vw,440px);gap:22px}
+.canvas-wrap{min-height:clamp(440px,60dvh,900px)}
+.canvas-wrap>canvas{width:min(88%,65dvh,820px);height:auto}
+.panel-heading{font-size:15px;padding:18px 24px}
+.mono,.panel-heading small{font-size:13px}
+.hero-footer{font-size:15px}
+.result canvas{width:clamp(140px,12vw,220px);height:auto;aspect-ratio:1}
+.control{padding:26px}
+.control h2{font-size:20px}
+label,.fields label,.seed-field{font-size:14px}
+.fields select,.seed-field input,.seed-field select{font-size:16px;min-height:42px}
+.primary{font-size:16px;padding:14px 18px}
+.secondary,.text-button,.file-button{font-size:14px}
+.transport b{font-size:16px}
+.transport small{font-size:13px}
+.speed,.speed select,.auto-toggle{font-size:14px}
+.scrub{font-size:13px}
+.scrub>span{white-space:nowrap}
+.how-it-works h2,.section-title h2{font-size:24px}
+.how-it-works li,.how-it-works li span{font-size:16px}
+.math-explanation{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;margin-top:28px}
+.math-explanation>h3,.math-explanation>p{grid-column:1/-1}
+.math-explanation .update-equation{margin-top:0;min-width:0}
+.update-equation math{font-size:28px;max-width:100%;overflow-x:auto;overflow-y:hidden;padding-bottom:5px}
+.update-equation p{font-size:16px}
+dialog#explain{width:calc(100vw - 48px);max-width:1280px;max-height:calc(100dvh - 48px);padding:clamp(28px,3.5vw,56px);overflow:auto}
+dialog#explain h2{font-size:32px;margin:0 48px 18px 0}
+dialog#explain p{font-size:18px;line-height:1.8}
+dialog#explain .math-explanation{margin-top:22px}
+dialog#explain .math-explanation>h3{font-size:22px!important;margin:12px 0 0!important}
+dialog#explain .update-equation h3{font-size:18px!important}
+dialog#explain .update-equation p{font-size:16px}
+dialog#explain summary{font-size:16px}
+dialog#explain .close{width:44px;height:44px;right:16px;top:16px;font-size:30px}
+@media(min-width:2000px){.canvas-wrap{min-height:66dvh}.canvas-wrap>canvas{width:min(88%,68dvh,1000px)}}
+@media(max-width:1000px){.stage{grid-template-columns:minmax(0,1fr) 300px}.control{padding:20px}.math-explanation{grid-template-columns:1fr}}
+@media(max-width:700px){header{padding:16px}main{padding:20px 16px}.stage{grid-template-columns:1fr}.side{display:grid;grid-template-columns:1fr}.canvas-wrap{min-height:360px}.canvas-wrap>canvas{width:min(88%,60dvh)}.result canvas{width:140px}.math-explanation{grid-template-columns:1fr;gap:14px}.update-equation math{font-size:23px}dialog#explain{width:calc(100vw - 24px);max-height:calc(100dvh - 24px);padding:26px 20px}dialog#explain h2{font-size:26px}dialog#explain p{font-size:16px}}
