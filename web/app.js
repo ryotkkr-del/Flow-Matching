@@ -1,6 +1,6 @@
 'use strict';
 const $=id=>document.getElementById(id);
-let route=null, previous=null, selected=0, frame=0, playing=false, last=0, cursor=0, busy=false, velocityScale=1, heatScale=1;
+let route=null, previous=null, selected=0, frame=0, playing=false, last=0, cursor=0, loopEndAt=0, busy=false, velocityScale=1, heatScale=1;
 let modelReady=false, demoNames=[], autoMode=false, autoTimer=null, loadVersion=0, autoIndex=-1;
 let livePicked=0,livePreview=null,liveStep=0,liveSteps=0,liveSeed=0,liveGalleryReady=false,liveWaiting=false;
 const scratch=document.createElement('canvas');scratch.width=scratch.height=28;const sx=scratch.getContext('2d');
@@ -94,14 +94,22 @@ function render(){
   $('compare-note').textContent=`同一の初期ノイズ・画像${selected+1}。旧 t=${(oldFrame/previous.steps).toFixed(3)} ／ 新 t=${(frame/d.steps).toFixed(3)}（各軌道の最寄りの計算時刻）。`;
  }
 }
-function setPlaying(value){playing=value;last=0;$('play').textContent=value?'Ⅱ':'▶';$('play').setAttribute('aria-label',value?'一時停止':'再生');$('play-state').textContent=route?(value?'再生中':'停止中'):'生成経路の読み込み待ち'}
+function setPlaying(value){playing=value;last=0;loopEndAt=0;$('play').textContent=value?'Ⅱ':'▶';$('play').setAttribute('aria-label',value?'一時停止':'再生');$('play-state').textContent=route?(value?'再生中':'停止中'):'生成経路の読み込み待ち'}
 function tick(time){
- if(playing&&route){if(last){cursor+=(time-last)/1000*route.steps/8*Number($('speed').value);const n=Math.min(route.steps,Math.floor(cursor));if(n!==frame){frame=n;render()}if(cursor>=route.steps){setPlaying(false);$('final').hidden=false;$('final-wait').hidden=true;if(autoMode)autoTimer=setTimeout(advanceAuto,1100)}}last=time}
+ if(playing&&route){if(last){cursor+=(time-last)/1000*route.steps/8*Number($('speed').value);const n=Math.min(route.steps,Math.floor(cursor));if(n!==frame){frame=n;render()}if(cursor>=route.steps){
+   $('final').hidden=false;$('final-wait').hidden=true;
+   if(autoMode){setPlaying(false);autoTimer=setTimeout(advanceAuto,1100)}
+   else {
+    // 保存した実計算の経路を繰り返す。毎周の再推論・再取得はしない。
+    if(!loopEndAt)loopEndAt=time;
+    else if(time-loopEndAt>=1100){frame=cursor=0;loopEndAt=0;render()}
+   }
+  }}last=time}
  requestAnimationFrame(tick);
 }
 requestAnimationFrame(tick);
 $('play').onclick=()=>{stopAuto();if(frame===route.steps){frame=cursor=0;render()}setPlaying(!playing)};
-$('restart').onclick=()=>{stopAuto();if(route){frame=cursor=0;setPlaying(false);render()}};
+$('restart').onclick=()=>{stopAuto();if(route){const resume=playing;frame=cursor=0;setPlaying(resume);render()}};
 $('time').oninput=()=>{stopAuto();setPlaying(false);frame=cursor=Number($('time').value);render();if(frame===route.steps){$('final').hidden=false;$('final-wait').hidden=true}};
 $('learn').onclick=()=>$('explain').showModal();$('close').onclick=()=>$('explain').close();
 $('fullscreen').onclick=()=>{if(document.fullscreenElement)document.exitFullscreen();else document.documentElement.requestFullscreen().catch(()=>message('このブラウザでは全画面表示が使えません',true))};
@@ -209,11 +217,8 @@ async function generate(compare=false){
   if(compare){if(d.checkpoint_sha256!==old.checkpoint_sha256||(d.weights||'raw')!==(old.weights||'raw'))throw Error('モデルが異なるためステップ数だけの比較はできません');for(let j=0;j<count;j++)if(d.states[0][j].some((v,i)=>v!==old.states[0][j][i]))throw Error('初期ノイズが一致しません')}
   previous=null;$('comparison-section').hidden=true;setRoute(d);if(compare)comparison(old);
   message(modelReady?'生成完了。実際のODE計算の途中を自由にたどれます。':'保存デモを再生中。実モデルが計算した経路を自由にたどれます。');
-  if(modelReady){frame=cursor=d.steps;render();setPlaying(false)}
-  else {
-   $('final').hidden=true;$('final-wait').hidden=false;$('final-wait').textContent='再生が終わると表示されます';
-   setPlaying(true);
-  }
+  $('final').hidden=true;$('final-wait').hidden=false;$('final-wait').textContent='再生が終わると表示されます';
+  setPlaying(true);
  }catch(e){
   if(version===loadVersion){
    message(e.message,true);
@@ -277,7 +282,7 @@ async function init(){
   $('generate').textContent=modelReady?'生成開始 ↗':'保存デモを再生 ↗';
   setBusy(false);
   if(modelReady){message(`学習済みモデルを読み込みました（epoch ${s.epoch}）。初期ノイズを準備しています。`);await prepareNoise()}
-  else if(demoNames.length){message('保存デモの初期ノイズを準備しています。');await loadDemo(demoNames.find(n=>/-steps50\.json\.gz$/.test(n))||demoNames[0],false,false)}
+  else if(demoNames.length){message('保存デモの初期ノイズを準備しています。');await loadDemo(demoNames.find(n=>/-steps50\.json\.gz$/.test(n))||demoNames[0],false,true)}
   else message(s.error||'学習済みモデルが未配置です。READMEに沿って学習するか、実モデルから保存した経路を読み込んでください。',true);
  }catch(e){setBusy(false);message(`接続できません：${e.message}。経路ファイルの読み込みは利用できます。`,true)}
 }
